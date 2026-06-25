@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { platform } from '@renderer/platform'
 import type { MixJobConfig } from '@renderer/platform'
 import { useJobsStore } from '@renderer/stores/jobs'
@@ -15,8 +15,18 @@ const videoResolution = ref<MixJobConfig['videoResolution']>('1080p')
 const sceneDetection = ref<MixJobConfig['sceneDetection']>('random')
 const minSegmentDuration = ref(0.5)
 const outputFilename = ref('')
+const maxConcurrency = ref(3)
 
 const canStart = ref(true)
+
+onMounted(async () => {
+  const settings = await platform.getSettings()
+  maxConcurrency.value = settings.maxConcurrency
+})
+
+watch(maxConcurrency, (val) => {
+  platform.setMaxConcurrency(val)
+})
 
 function baseNameWithoutExt(path: string): string {
   const name = path.split(/[/\\]/).pop() ?? path
@@ -159,6 +169,19 @@ async function startMix(): Promise<void> {
             step="0.1"
           />
           <span class="input-suffix">seconds</span>
+        </div>
+      </FormRow>
+
+      <FormRow label="Max Concurrent Jobs">
+        <div class="number-input">
+          <input
+            v-model.number="maxConcurrency"
+            type="number"
+            class="input"
+            min="1"
+            max="8"
+            step="1"
+          />
         </div>
       </FormRow>
 

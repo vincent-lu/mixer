@@ -35,7 +35,7 @@ export const presets = sqliteTable('presets', {
 
 export const appState = sqliteTable('app_state', {
   id: integer('id').primaryKey(),
-  maxConcurrency: integer('max_concurrency').notNull().default(2),
+  maxConcurrency: integer('max_concurrency').notNull().default(3),
   defaultOutputDir: text('default_output_dir'),
   lastUsedPresetId: integer('last_used_preset_id').references(() => presets.id, {
     onDelete: 'set null',
