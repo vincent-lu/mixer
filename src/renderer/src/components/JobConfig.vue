@@ -1,0 +1,259 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { platform } from '@renderer/platform'
+import type { MixJobConfig } from '@renderer/platform'
+import { useJobsStore } from '@renderer/stores/jobs'
+import FormRow from './config/FormRow.vue'
+
+const store = useJobsStore()
+
+const bgmPath = ref('')
+const sourceVideoPaths = ref<string[]>([])
+const outputDir = ref('')
+const outputFormat = ref<MixJobConfig['outputFormat']>('mp4')
+const videoResolution = ref<MixJobConfig['videoResolution']>('1080p')
+const sceneDetection = ref<MixJobConfig['sceneDetection']>('random')
+
+const canStart = ref(true)
+
+async function pickBgm(): Promise<void> {
+  const path = await platform.selectAudioFile()
+  if (path) bgmPath.value = path
+}
+
+async function pickVideos(): Promise<void> {
+  const paths = await platform.selectVideoFiles()
+  if (paths.length > 0) {
+    sourceVideoPaths.value = [...sourceVideoPaths.value, ...paths]
+  }
+}
+
+async function pickOutputDir(): Promise<void> {
+  const path = await platform.selectDirectory()
+  if (path) outputDir.value = path
+}
+
+function removeVideo(index: number): void {
+  sourceVideoPaths.value = sourceVideoPaths.value.filter((_, i) => i !== index)
+}
+
+function fileName(path: string): string {
+  return path.split(/[/\\]/).pop() ?? path
+}
+
+async function startMix(): Promise<void> {
+  if (!bgmPath.value || sourceVideoPaths.value.length === 0 || !outputDir.value) return
+  canStart.value = false
+  try {
+    const config: MixJobConfig = {
+      bgmPath: bgmPath.value,
+      sourceVideoPaths: [...sourceVideoPaths.value],
+      outputDir: outputDir.value,
+      outputFormat: outputFormat.value,
+      sceneDetection: sceneDetection.value,
+      videoResolution: videoResolution.value,
+    }
+    const name = `Mix — ${fileName(bgmPath.value)}`
+    await store.create(name, config)
+  } finally {
+    canStart.value = true
+  }
+}
+</script>
+
+<template>
+  <div class="config-root">
+    <h2 class="text-lg font-semibold mb-6">New Mix</h2>
+
+    <div class="fields">
+      <FormRow label="Background Music">
+        <div class="file-picker">
+          <button class="picker-btn" @click="pickBgm">
+            <FaIcon :icon="['fasr', 'music']" />
+            <span>Select audio file</span>
+          </button>
+          <span class="file-path">{{ bgmPath || 'No file selected' }}</span>
+        </div>
+      </FormRow>
+
+      <FormRow label="Source Videos">
+        <button class="picker-btn" @click="pickVideos">
+          <FaIcon :icon="['fasr', 'film']" />
+          <span>Add video files</span>
+        </button>
+        <div v-if="sourceVideoPaths.length > 0" class="video-list">
+          <div v-for="(path, i) in sourceVideoPaths" :key="i" class="video-item">
+            <span class="video-name">{{ fileName(path) }}</span>
+            <button class="icon-btn danger" @click="removeVideo(i)">
+              <FaIcon :icon="['fasr', 'trash']" />
+            </button>
+          </div>
+        </div>
+      </FormRow>
+
+      <FormRow label="Output Directory">
+        <div class="file-picker">
+          <button class="picker-btn" @click="pickOutputDir">
+            <FaIcon :icon="['fasr', 'folder']" />
+            <span>Select folder</span>
+          </button>
+          <span class="file-path">{{ outputDir || 'No folder selected' }}</span>
+        </div>
+      </FormRow>
+
+      <FormRow label="Output Format">
+        <select v-model="outputFormat" class="select">
+          <option value="mp4">MP4</option>
+          <option value="mkv">MKV</option>
+          <option value="mov">MOV</option>
+        </select>
+      </FormRow>
+
+      <FormRow label="Video Resolution">
+        <select v-model="videoResolution" class="select">
+          <option value="1080p">1080p</option>
+          <option value="720p">720p</option>
+          <option value="480p">480p</option>
+          <option value="source">Source (no re-encode)</option>
+        </select>
+      </FormRow>
+
+      <FormRow label="Scene Detection">
+        <select v-model="sceneDetection" class="select">
+          <option value="random">Random segments</option>
+          <option value="ffmpeg">FFmpeg scene detection</option>
+        </select>
+      </FormRow>
+
+      <button
+        class="start-btn"
+        :disabled="!bgmPath || sourceVideoPaths.length === 0 || !outputDir || !canStart"
+        @click="startMix"
+      >
+        <FaIcon :icon="['fasr', 'plus']" />
+        <span>Start Mix</span>
+      </button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.config-root {
+  max-width: 560px;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-path {
+  font-size: 13px;
+  color: #9ca3af;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  color: #d1d5db;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.picker-btn:hover {
+  background: #374151;
+}
+
+.video-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.video-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: #1f2937;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.video-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #d1d5db;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #9ca3af;
+  border-radius: 4px;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.icon-btn.danger:hover {
+  color: #ef4444;
+}
+
+.select {
+  width: 100%;
+  padding: 6px 10px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  color: #d1d5db;
+  font-size: 13px;
+}
+
+.start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.start-btn:hover:not(:disabled) {
+  background: #3b82f6;
+}
+
+.start-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+</style>

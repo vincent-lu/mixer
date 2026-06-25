@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+
+# Database
+mixer.db
+mixer.db-wal
+mixer.db-shm
+
+# WASM runtime (reconstituted from node_modules)
+src/renderer/public/essentia/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+
+# Logs
+*.log

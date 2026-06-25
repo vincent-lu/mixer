@@ -1,0 +1,158 @@
+# mixer — Design Document
+
+Current-state specification. Updated alongside implementation.
+
+## Stack
+
+| Component | Version | Role |
+|-----------|---------|------|
+| Electron | 42.5 | Desktop shell |
+| electron-vite | 5.0 | Three-process build (main/preload/renderer) |
+| Vue 3 | 3.5 | UI framework (`<script setup>`, Composition API) |
+| TypeScript | 6.0 | Strict mode + noUncheckedIndexedAccess |
+| Pinia | 3.0 | State management |
+| better-sqlite3 | 12.x | SQLite driver |
+| Drizzle ORM | 0.45 | Schema, queries, migrations |
+| essentia.js | 0.1.3 | Audio analysis (WASM, BPM/beat/onset detection) |
+| FontAwesome | 7.2 | Icons (sharp-regular set) |
+| Tailwind CSS | 4.3 | Styling (Vite plugin, no config file) |
+| ffmpeg | system | Video processing (not bundled) |
+
+## Architecture
+
+Three-process Electron model with strict IPC boundary:
+
+```
+main process          preload           renderer
+  ┌──────────┐    ┌────────────┐    ┌──────────────┐
+  │ DB layer │    │ contextBridge│   │ Vue app      │
+  │ IPC hdlrs│◄──►│ window.api │◄──►│ Platform intf│
+  │ ffmpeg   │    └────────────┘    │ Pinia stores │
+  └──────────┘                      │ Components   │
+                                    │ essentia.js  │
+                                    └──────────────┘
+```
+
+**Platform seam:** `src/renderer/src/platform/types.ts` defines the `Platform` interface. Electron implementation in `electron.ts` is a thin wrapper over `window.api`.
+
+## Data Model
+
+### jobs
+
+Mixing job with full lifecycle tracking.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | integer PK | autoincrement |
+| name | text | auto-generated from BGM filename |
+| status | text | `pending → analyzing → mixing → done/failed/cancelled` |
+| config | JSON | `MixJobConfig` — BGM path, video paths, output settings |
+| analysis_result | JSON | `AnalysisResult` — BPM, section timings, scene count |
+| progress | integer | 0-100 |
+| progress_stage | text | `analyzing`, `mixing`, or `encoding` |
+| error | text | populated on failure |
+| output_path | text | final output file path |
+| created_at | integer | unix-ms |
+| started_at | integer | unix-ms, set on first status transition |
+| completed_at | integer | unix-ms, set on done/failed/cancelled |
+
+### presets
+
+Saved job configurations for reuse.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | integer PK | autoincrement |
+| name | text | user-defined |
+| config | JSON | `MixJobConfig` |
+| created_at | integer | unix-ms |
+| updated_at | integer | unix-ms |
+
+### app_state
+
+Singleton row (id=1) for global settings.
+
+| Column | Type | Default |
+|--------|------|---------|
+| max_concurrency | integer | 2 |
+| default_output_dir | text | null |
+| last_used_preset_id | integer FK | null |
+
+## Job Lifecycle
+
+```
+pending → analyzing → mixing → done
+                  ↘         ↘
+                  failed    cancelled
+```
+
+- **pending**: created, waiting to start
+- **analyzing**: BGM audio analysis in progress (essentia.js)
+- **mixing**: ffmpeg processing (scene selection + concatenation + audio mix)
+- **done**: output file written
+- **failed**: error recorded, can be deleted
+- **cancelled**: user-initiated abort
+
+## Audio Analysis Pipeline
+
+Uses essentia.js (WASM) running in the renderer process:
+
+1. **BPM detection** (`PercivalBpmEstimator`) — determines base tempo
+2. **Beat tracking** (planned: `BeatTrackerMultiFeature`) — finds beat positions
+3. **Onset detection** (planned: spectral flux) — detects musical events
+4. **Section segmentation** (planned) — identifies structural boundaries (verse/chorus/bridge)
+5. **Transition scoring** (planned) — scores beat positions as scene switch candidates
+
+Currently implemented: BPM detection only. Multi-layer analysis is the next feature priority.
+
+## ffmpeg Integration
+
+System-installed ffmpeg, validated on startup (`src/main/ffmpeg/validate.ts`).
+
+Planned usage:
+- **Probe**: `ffprobe` for video metadata (duration, resolution, codec)
+- **Scene detection**: `ffmpeg -filter:v "select='gt(scene,0.3)'"` for finding cut points in source videos
+- **Mixing**: concat demuxer + audio replacement + re-encoding
+- **Progress**: parse ffmpeg stderr for progress reporting
+
+## UI Layout
+
+Two-panel layout, no router:
+
+```
+┌──────────────────────────┬────────────────┐
+│   Job Configuration      │   Job Queue    │
+│                          │                │
+│  BGM: [Select file]      │  ┌──────────┐ │
+│  Videos: [Add files]     │  │ Mix — X   │ │
+│  Output: [Select folder] │  │ ■■■■░ 60% │ │
+│  Format: [MP4 ▼]         │  └──────────┘ │
+│  Resolution: [1080p ▼]   │  ┌──────────┐ │
+│  Scene detect: [Random ▼]│  │ Mix — Y   │ │
+│                          │  │ ✓ Done    │ │
+│  [Start Mix]             │  └──────────┘ │
+│                          │                │
+│  (2/3 width)             │  (1/3 width)  │
+└──────────────────────────┴────────────────┘
+```
+
+## Testing Strategy
+
+Pure-logic tests only. No component mounting, no UI tests.
+
+Test candidates (as features are built):
+- Audio analysis result parsing
+- ffmpeg command construction
+- Job state machine transitions
+- Scene selection algorithms
+
+## Deferred
+
+- Actual mixing pipeline (ffmpeg subprocess management)
+- Multi-layer audio analysis (beat tracking + onset + segmentation)
+- ffmpeg scene detection implementation
+- Job concurrency management (respecting maxConcurrency)
+- Preset save/load UI
+- Output preview
+- Batch operations
+- Progress reporting from ffmpeg stderr
