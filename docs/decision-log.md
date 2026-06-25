@@ -4,6 +4,20 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-25 — BPM-driven beat detection
+
+### essentia.js BeatTrackerMultiFeature in Node.js main process
+
+**Decision:** Run beat detection in the main process using essentia.js CJS module (`createRequire` + `require('essentia.js')`). Extract PCM via ffmpeg (`-f f32le -ac 1 -ar 44100 pipe:1`), convert to Float32Array, feed to `BeatTrackerMultiFeature(signal, 208, 40)`. Filter raw beat ticks by configurable minimum gap with 20ms tolerance. BPM derived from median tick interval. Fixed-interval as fallback when beat detection fails or `segmentDuration` is explicitly set.
+
+**Why:** Main process is where the pipeline runs — avoids IPC roundtrip to renderer for analysis. CJS entry pre-instantiates WASM module (no async factory needed). `BeatTrackerMultiFeature` provides both beat positions and confidence in one call.
+
+**Beat selection strategy:** Greedy filter with minimum gap rather than "every Nth beat" or "cuts per bar." Minimum gap is intuitive (maps directly to visual pacing), adapts naturally to different tempos, and the existing `segmentDuration` parameter provides semantic precedent. 20ms tolerance accounts for essentia's hop-size-derived imprecision (~0.4992s intervals at 120 BPM instead of exactly 0.5s).
+
+**Alternative considered:** Running essentia in renderer (existing `bpm.ts` pattern) — rejected because the mixing pipeline runs in main process and the CLI has no renderer. Separate `--min-segment` flag rather than overloading `--segment-duration` — clearer semantics, mutual exclusivity enforced.
+
+---
+
 ## 2026-06-25 — Job runner: UI-to-pipeline wiring
 
 ### Main-process runner with DB-polling progress model

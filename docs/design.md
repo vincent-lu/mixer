@@ -128,7 +128,8 @@ probe → analyze → plan segments → concat + encode
 | Module | Role |
 |--------|------|
 | `probe.ts` | ffprobe wrapper (video metadata, audio duration) |
-| `analyze.ts` | BGM timing analysis (MVP: fixed-interval, later: BPM-driven) |
+| `audio.ts` | PCM extraction (ffmpeg) + essentia.js beat detection |
+| `analyze.ts` | BGM timing analysis (beat detection default, fixed-interval fallback) |
 | `segments.ts` | Shuffled round-robin segment assignment with cursor tracking |
 | `concat.ts` | Concat demuxer file builder + ffmpeg arg construction |
 | `encode.ts` | Spawn ffmpeg, parse progress from stderr, abort support |
@@ -136,7 +137,7 @@ probe → analyze → plan segments → concat + encode
 
 **ffmpeg strategy:** concat demuxer with `inpoint`/`outpoint` per segment. Single ffmpeg command, no temp video files. Re-encodes output (frame-accurate cuts, handles any input format). Progress parsed from stderr `time=` field.
 
-**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s>]`
+**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>]`
 
 ## Job Runner
 
