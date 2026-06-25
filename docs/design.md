@@ -103,7 +103,9 @@ Uses essentia.js (WASM) running in the renderer process:
 4. **Section segmentation** (planned) — identifies structural boundaries (verse/chorus/bridge)
 5. **Transition scoring** (planned) — scores beat positions as scene switch candidates
 
-Currently implemented: BPM detection only. Multi-layer analysis is the next feature priority.
+Currently implemented: BPM detection only.
+
+`AnalysisResult` is designed with all layers as optional fields — the mixing pipeline uses whatever is available, falling back to simpler strategies (e.g., random timing) when higher layers are absent. This allows incremental analysis improvements without restructuring the pipeline.
 
 ## ffmpeg Integration
 
@@ -114,6 +116,52 @@ Planned usage:
 - **Scene detection**: `ffmpeg -filter:v "select='gt(scene,0.3)'"` for finding cut points in source videos
 - **Mixing**: concat demuxer + audio replacement + re-encoding
 - **Progress**: parse ffmpeg stderr for progress reporting
+
+## Mixing Pipeline
+
+CLI-first pipeline in `src/main/mixer/`, callable from both CLI (`pnpm mix`) and Electron IPC.
+
+```
+probe → analyze → plan segments → concat + encode
+```
+
+| Module | Role |
+|--------|------|
+| `probe.ts` | ffprobe wrapper (video metadata, audio duration) |
+| `analyze.ts` | BGM timing analysis (MVP: fixed-interval, later: BPM-driven) |
+| `segments.ts` | Shuffled round-robin segment assignment with cursor tracking |
+| `concat.ts` | Concat demuxer file builder + ffmpeg arg construction |
+| `encode.ts` | Spawn ffmpeg, parse progress from stderr, abort support |
+| `pipeline.ts` | Orchestrator — single async function, self-contained per invocation |
+
+**ffmpeg strategy:** concat demuxer with `inpoint`/`outpoint` per segment. Single ffmpeg command, no temp video files. Re-encodes output (frame-accurate cuts, handles any input format). Progress parsed from stderr `time=` field.
+
+**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s>]`
+
+## Video Preprocessing
+
+Source videos are normalized to a common format before mixing. Ensures the concat pipeline works cleanly regardless of input codec/resolution variety.
+
+**Pipeline:**
+1. **Probe** — `ffprobe` reads codec, resolution, framerate, duration
+2. **Match check** — compare against target preset (default: h264, 1080p, 30fps)
+3. **Normalize** (if needed) — re-encode to target preset; skip if already matching
+4. **Cache** — normalized files stored alongside originals, reused across jobs
+
+Normalization runs per source video and parallelizes naturally across videos.
+
+## Scene Selection
+
+Determines which source video clip plays during each audio-analyzed segment.
+
+**Default: shuffled round-robin**
+1. Create a deck of all source video indices
+2. Shuffle the deck
+3. Assign one segment per video in shuffled order
+4. Repeat rounds until all segments are assigned
+5. Anti-consecutive: reshuffle if last video of previous round equals first of current
+
+Algorithm is pluggable (strategy pattern) — future options: weighted-by-duration, energy-matched, user-defined sequence.
 
 ## UI Layout
 
@@ -148,11 +196,16 @@ Test candidates (as features are built):
 
 ## Deferred
 
-- Actual mixing pipeline (ffmpeg subprocess management)
+Designed, not yet implemented:
+- Video preprocessing pipeline (probe + conditional normalization)
+- Visual effects / transitions (ffmpeg xfade as starting point)
+
+Not yet designed:
+- Electron UI wiring to mixing pipeline
 - Multi-layer audio analysis (beat tracking + onset + segmentation)
-- ffmpeg scene detection implementation
+- ffmpeg scene detection integration
 - Job concurrency management (respecting maxConcurrency)
+- Progress reporting from ffmpeg stderr
 - Preset save/load UI
 - Output preview
 - Batch operations
-- Progress reporting from ffmpeg stderr

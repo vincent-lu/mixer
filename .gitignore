@@ -30,5 +30,8 @@ Thumbs.db
 # Logs
 *.log
 
+# Generated test assets
+test-assets/
+
 # Claude Code
 .claude/settings.local.json

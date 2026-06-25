@@ -46,9 +46,10 @@ node_modules/.pnpm/@electron+rebuild@*/node_modules/@electron/rebuild/node_modul
 | Layer | Concept | Code |
 |-------|---------|------|
 | L1 Data | DB + shared types | `src/main/db/`, `src/shared/types.ts` |
-| L2 Jobs | Job lifecycle + ffmpeg | `src/main/ipc/jobs.ts`, `src/main/ffmpeg/` |
-| L3 Analysis | essentia.js BPM/onset | `src/renderer/src/audio/` |
-| L4 UI | Vue components + Pinia | `src/renderer/src/components/`, `stores/` |
+| L2 Mixer | Mixing pipeline (probe/analyze/plan/encode) | `src/main/mixer/` |
+| L3 Jobs | Job lifecycle + IPC | `src/main/ipc/jobs.ts`, `src/main/ffmpeg/` |
+| L4 Analysis | essentia.js BPM/onset | `src/renderer/src/audio/` |
+| L5 UI | Vue components + Pinia | `src/renderer/src/components/`, `stores/` |
 
 **Entry points:** `src/main/index.ts` (Electron main), `src/preload/index.ts` (contextBridge → `window.api`), `src/renderer/src/App.vue` (root), `src/shared/types.ts` (cross-process types), `src/renderer/src/platform/types.ts` (Platform interface).
 
