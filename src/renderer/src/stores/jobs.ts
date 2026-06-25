@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { platform } from '@renderer/platform'
-import type { MixJob, MixJobConfig } from '@renderer/platform'
+import type { MixJob, MixJobConfig, ProgressStage } from '@renderer/platform'
 
 function ipcClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
@@ -11,7 +11,7 @@ export const useJobsStore = defineStore('jobs', () => {
   const jobs = ref<MixJob[]>([])
   const loading = ref(false)
 
-  let pollTimer: ReturnType<typeof setInterval> | null = null
+  const unsubs: Array<() => void> = []
 
   const activeJobs = computed(() =>
     jobs.value.filter((j) => j.status === 'analyzing' || j.status === 'mixing'),
@@ -74,20 +74,28 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   }
 
-  function startPolling(): void {
-    if (pollTimer) return
-    pollTimer = setInterval(() => {
-      if (activeJobs.value.length > 0 || pendingJobs.value.length > 0) {
-        void load()
-      }
-    }, 1000)
+  function subscribe(): void {
+    if (unsubs.length > 0) return
+    unsubs.push(
+      platform.onJobProgress((data: { id: number; progress: number; stage: ProgressStage }) => {
+        const job = jobs.value.find((j) => j.id === data.id)
+        if (job) {
+          job.progress = data.progress
+          job.progressStage = data.stage
+        }
+      }),
+      platform.onJobStatusChange((updated: MixJob) => {
+        const idx = jobs.value.findIndex((j) => j.id === updated.id)
+        if (idx !== -1) {
+          jobs.value[idx] = updated
+        }
+      }),
+    )
   }
 
-  function stopPolling(): void {
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = null
-    }
+  function unsubscribe(): void {
+    for (const fn of unsubs) fn()
+    unsubs.length = 0
   }
 
   return {
@@ -101,7 +109,7 @@ export const useJobsStore = defineStore('jobs', () => {
     cancel,
     retry,
     remove,
-    startPolling,
-    stopPolling,
+    subscribe,
+    unsubscribe,
   }
 })

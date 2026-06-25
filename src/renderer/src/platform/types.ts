@@ -25,6 +25,11 @@ export interface Platform {
   cancelJob(id: number): Promise<void>
   deleteJob(id: number): Promise<void>
 
+  onJobProgress(
+    callback: (data: { id: number; progress: number; stage: ProgressStage }) => void,
+  ): () => void
+  onJobStatusChange(callback: (job: MixJob) => void): () => void
+
   listPresets(): Promise<Preset[]>
   createPreset(input: { name: string; config: MixJobConfig }): Promise<Preset>
   updatePreset(id: number, input: { name?: string; config?: MixJobConfig }): Promise<void>

@@ -1,9 +1,16 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { listJobs, updateJobStatus, updateJobProgress, completeJob, failJob, cancelJob } from './db/jobs'
+import { BrowserWindow } from 'electron'
+import { getJob, listJobs, updateJobStatus, updateJobProgress, completeJob, failJob, cancelJob } from './db/jobs'
 import { getAppSettings } from './db/state'
 import { runMixPipeline } from './mixer/pipeline'
 import type { MixJob, MixJobStatus } from '../shared/types'
+
+function broadcast(channel: string, ...args: unknown[]): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(channel, ...args)
+  }
+}
 
 const running = new Map<number, AbortController>()
 let stopped = false
@@ -64,6 +71,7 @@ async function executeJob(job: MixJob): Promise<void> {
   try {
     updateJobStatus(job.id, 'analyzing')
     lastStatus = 'analyzing'
+    broadcast('job:status-change', getJob(job.id))
 
     const outputPath = buildOutputPath(job)
 
@@ -77,19 +85,24 @@ async function executeJob(job: MixJob): Promise<void> {
         if (status !== lastStatus) {
           updateJobStatus(job.id, status)
           lastStatus = status
+          broadcast('job:status-change', getJob(job.id))
         }
-        updateJobProgress(job.id, Math.round(percent), stage)
+        const progress = Math.round(percent)
+        updateJobProgress(job.id, progress, stage)
+        broadcast('job:progress', { id: job.id, progress, stage })
       },
       signal: controller.signal,
     })
 
     completeJob(job.id, result.outputPath)
+    broadcast('job:status-change', getJob(job.id))
   } catch (err) {
     if (controller.signal.aborted) {
       cancelJob(job.id)
     } else {
       failJob(job.id, err instanceof Error ? err.message : String(err))
     }
+    broadcast('job:status-change', getJob(job.id))
   } finally {
     running.delete(job.id)
     processQueue()

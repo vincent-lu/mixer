@@ -5,6 +5,7 @@ import type {
   MixJob,
   MixJobConfig,
   Preset,
+  ProgressStage,
 } from '../shared/types'
 
 declare global {
@@ -28,6 +29,12 @@ declare global {
       retryJob(id: number): Promise<void>
       cancelJob(id: number): Promise<void>
       deleteJob(id: number): Promise<void>
+
+      // Job events (push from runner)
+      onJobProgress(
+        callback: (data: { id: number; progress: number; stage: ProgressStage }) => void,
+      ): () => void
+      onJobStatusChange(callback: (job: MixJob) => void): () => void
 
       // Presets
       listPresets(): Promise<Preset[]>

@@ -1,11 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { IpcRendererEvent } from 'electron'
 import type {
   AnalysisResult,
   AppSettings,
   MixJob,
   MixJobConfig,
   Preset,
+  ProgressStage,
 } from '../shared/types'
 
 const api = {
@@ -30,6 +32,20 @@ const api = {
   retryJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:retry', id),
   cancelJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:cancel', id),
   deleteJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:delete', id),
+
+  // Job events (push from runner)
+  onJobProgress: (
+    callback: (data: { id: number; progress: number; stage: ProgressStage }) => void,
+  ): (() => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: number; progress: number; stage: ProgressStage }): void => callback(data)
+    ipcRenderer.on('job:progress', listener)
+    return () => { ipcRenderer.removeListener('job:progress', listener) }
+  },
+  onJobStatusChange: (callback: (job: MixJob) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, job: MixJob): void => callback(job)
+    ipcRenderer.on('job:status-change', listener)
+    return () => { ipcRenderer.removeListener('job:status-change', listener) }
+  },
 
   // Presets
   listPresets: (): Promise<Preset[]> => ipcRenderer.invoke('presets:list'),

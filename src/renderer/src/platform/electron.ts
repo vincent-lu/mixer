@@ -17,6 +17,9 @@ export const electronPlatform: Platform = {
   cancelJob: (id) => window.api.cancelJob(id),
   deleteJob: (id) => window.api.deleteJob(id),
 
+  onJobProgress: (callback) => window.api.onJobProgress(callback),
+  onJobStatusChange: (callback) => window.api.onJobStatusChange(callback),
+
   listPresets: () => window.api.listPresets(),
   createPreset: (input) => window.api.createPreset(input),
   updatePreset: (id, input) => window.api.updatePreset(id, input),

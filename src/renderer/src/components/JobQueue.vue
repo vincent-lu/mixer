@@ -10,11 +10,11 @@ const { jobs, loading } = storeToRefs(store)
 
 onMounted(() => {
   void store.load()
-  store.startPolling()
+  store.subscribe()
 })
 
 onBeforeUnmount(() => {
-  store.stopPolling()
+  store.unsubscribe()
 })
 
 function statusLabel(status: MixJobStatus): string {
