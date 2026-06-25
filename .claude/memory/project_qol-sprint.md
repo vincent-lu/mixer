@@ -9,17 +9,17 @@ metadata:
 
 Quality-of-life sprint to close small/foundational items before adding more features.
 
-**Current state:** Item 1 complete, items 2–4 remaining.
+**Current state:** All 4 items complete.
 
 **Items (in suggested order):**
 
 1. ~~**Remove vestigial IPC handlers**~~ — Done (3725755). Removed `jobs:updateStatus`, `jobs:updateProgress`, `jobs:complete`, `jobs:fail` from IPC, preload, preload .d.ts, Platform interface, and electron.ts. `jobs:updateAnalysis` also vestigial but left as out-of-scope.
 
-2. **Fix stale design.md** — Audio Analysis section says "running in the renderer process" and "BPM detection only" but beat detection now runs in main process via `src/main/mixer/audio.ts` using `BeatTrackerMultiFeature`. Update to reflect reality. ~5 min.
+2. ~~**Fix stale design.md**~~ — Done (2062eb7). Updated Audio Analysis Pipeline section to reflect main-process beat detection via `BeatTrackerMultiFeature`.
 
-3. **Retry mechanism for failed jobs** — Add a "Retry" button in `JobQueue.vue` for failed jobs. Reset job status to `pending`, clear error field. Runner picks it up via existing `processQueue()` flow. Need a new `retryJob` DB function + IPC handler. ~30 min.
+3. ~~**Retry mechanism for failed jobs**~~ — Done (620038b). Added `retryJob` DB function, IPC handler, preload/Platform/store/UI across 8 files. Retry button (arrow-rotate-right icon) shows on failed jobs.
 
-4. **Push-based progress** — Replace 1s polling in Pinia store with `webContents.send` from runner. Add `onJobProgress`/`onJobStatusChange` events via preload contextBridge. Store subscribes on mount. Remove `pollTimer` and `startPolling`/`stopPolling`. More responsive, cleaner architecture. ~1-2 hrs.
+4. ~~**Push-based progress**~~ — Done (pending commit). Replaced 1s polling with `webContents.send` push events. Runner broadcasts `job:progress` (lightweight) and `job:status-change` (full MixJob). Store subscribes/unsubscribes via preload event listeners. Fixed race condition where broadcast arrived before create IPC response caused duplicate jobs.
 
 **Deferred from this sprint (too large or unclear):**
 - Video preprocessing (probe-first normalization) — real feature, own session

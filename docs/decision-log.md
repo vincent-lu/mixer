@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-25 — Push-based progress replaces polling
+
+**Decision:** Replace 1s DB-polling in Pinia store with push events from the runner via `webContents.send`. Two event types: `job:progress` (lightweight `{id, progress, stage}` for frequent updates) and `job:status-change` (full `MixJob` for infrequent state transitions). Runner broadcasts via `BrowserWindow.getAllWindows()`. Preload exposes `onJobProgress`/`onJobStatusChange` returning unsubscribe functions. Store subscribes on mount, unsubscribes on unmount.
+
+**Why:** 1s polling added latency and unnecessary DB reads. Push events provide sub-second responsiveness and cleaner architecture. Two event types balance bandwidth (progress fires every percent) vs completeness (status changes carry full job data including error/outputPath/timestamps).
+
+**Race condition fixed:** `executeJob` runs synchronously until its first `await`, so the initial `job:status-change` broadcast arrives at the renderer before the `jobs:create` invoke response. The `onJobStatusChange` handler must NOT add unknown jobs (only update existing) — `create()` and `load()` are the canonical sources for adding jobs to the array.
+
+**Alternative considered:** Injecting `webContents` into the runner via `startRunner()` — rejected in favor of `BrowserWindow.getAllWindows()` which is simpler and decoupled.
+
+---
+
 ## 2026-06-25 — Fix stale design.md audio analysis section
 
 **Decision:** Updated "Audio Analysis Pipeline" section to reflect current reality: essentia.js runs in the main process (not renderer), uses `BeatTrackerMultiFeature` (not `PercivalBpmEstimator`), beat selection with configurable min gap is implemented (not just BPM detection). Fixed-interval fallback documented.

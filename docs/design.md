@@ -147,7 +147,7 @@ Main-process job runner in `src/main/runner.ts`. Bridges UI job creation to the 
 
 **Concurrency:** FIFO queue respecting `maxConcurrency` from `appState` (default 2, range 1–8). When a job completes or fails, `processQueue()` re-checks for pending work.
 
-**Progress:** Pipeline `onProgress` callback writes to DB (`updateJobProgress`). Renderer polls every 1s via Pinia store. Status transitions tracked to avoid redundant DB writes.
+**Progress:** Pipeline `onProgress` callback writes to DB (`updateJobProgress`) and broadcasts `job:progress` event via `webContents.send`. Status transitions broadcast full job via `job:status-change`. Pinia store subscribes to push events on mount — no polling. Status transitions tracked to avoid redundant DB writes.
 
 **Cancellation:** `AbortController` per running job, stored in `Map<number, AbortController>`. Cancel from UI → `cancelRunningJob(id)` → `controller.abort()` → pipeline exits → catch handler marks job cancelled.
 
@@ -218,9 +218,8 @@ Designed, not yet implemented:
 - Visual effects / transitions (ffmpeg xfade as starting point)
 
 Not yet designed:
-- Multi-layer audio analysis (beat tracking + onset + segmentation)
+- Multi-layer audio analysis (onset + segmentation)
 - ffmpeg scene detection integration
-- Push-based progress (webContents.send to replace polling)
 - Preset save/load UI
 - Output preview
 - Batch operations
