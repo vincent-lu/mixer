@@ -105,6 +105,13 @@ function showOutput(path: string): void {
             <FaIcon :icon="['fasr', 'stop']" />
           </button>
           <button
+            v-if="job.status === 'failed'"
+            class="action-btn"
+            @click="store.retry(job.id)"
+          >
+            <FaIcon :icon="['fasr', 'arrow-rotate-right']" />
+          </button>
+          <button
             v-if="isDeletable(job.status)"
             class="action-btn danger"
             @click="store.remove(job.id)"

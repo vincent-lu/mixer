@@ -56,6 +56,15 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   }
 
+  async function retry(id: number): Promise<void> {
+    try {
+      await platform.retryJob(id)
+      await load()
+    } catch (e) {
+      console.error('[jobs] retry failed:', e)
+    }
+  }
+
   async function remove(id: number): Promise<void> {
     try {
       await platform.deleteJob(id)
@@ -90,6 +99,7 @@ export const useJobsStore = defineStore('jobs', () => {
     load,
     create,
     cancel,
+    retry,
     remove,
     startPolling,
     stopPolling,

@@ -27,6 +27,7 @@ const api = {
     ipcRenderer.invoke('jobs:create', input),
   updateJobAnalysis: (id: number, result: AnalysisResult): Promise<void> =>
     ipcRenderer.invoke('jobs:updateAnalysis', id, result),
+  retryJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:retry', id),
   cancelJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:cancel', id),
   deleteJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:delete', id),
 

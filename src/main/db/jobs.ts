@@ -111,6 +111,23 @@ export function cancelJob(id: number): void {
     .run()
 }
 
+export function retryJob(id: number): void {
+  const db = getDb()
+  db.update(jobs)
+    .set({
+      status: 'pending',
+      error: null,
+      progress: 0,
+      progressStage: null,
+      analysisResult: null,
+      outputPath: null,
+      startedAt: null,
+      completedAt: null,
+    })
+    .where(eq(jobs.id, id))
+    .run()
+}
+
 export function deleteJob(id: number): void {
   const db = getDb()
   db.delete(jobs).where(eq(jobs.id, id)).run()

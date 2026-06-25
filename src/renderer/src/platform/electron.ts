@@ -13,6 +13,7 @@ export const electronPlatform: Platform = {
   getJob: (id) => window.api.getJob(id),
   createJob: (input) => window.api.createJob(input),
   updateJobAnalysis: (id, result) => window.api.updateJobAnalysis(id, result),
+  retryJob: (id) => window.api.retryJob(id),
   cancelJob: (id) => window.api.cancelJob(id),
   deleteJob: (id) => window.api.deleteJob(id),
 
