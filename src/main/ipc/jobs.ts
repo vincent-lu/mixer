@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
-import type { AnalysisResult, MixJob, MixJobConfig } from '../../shared/types'
-import { createJob, deleteJob, getJob, listJobs, retryJob, updateJobAnalysis } from '../db/jobs'
+import type { MixJob, MixJobConfig } from '../../shared/types'
+import { createJob, deleteJob, getJob, listJobs, retryJob } from '../db/jobs'
 import { cancelRunningJob, notifyNewJob } from '../runner'
 
 export function registerJobsHandlers(): void {
@@ -18,13 +18,6 @@ export function registerJobsHandlers(): void {
       const job = createJob(input)
       notifyNewJob()
       return job
-    },
-  )
-
-  ipcMain.handle(
-    'jobs:updateAnalysis',
-    async (_event, id: number, result: AnalysisResult): Promise<void> => {
-      updateJobAnalysis(id, result)
     },
   )
 

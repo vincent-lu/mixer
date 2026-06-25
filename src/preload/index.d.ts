@@ -25,7 +25,6 @@ declare global {
       listJobs(): Promise<MixJob[]>
       getJob(id: number): Promise<MixJob | null>
       createJob(input: { name: string; config: MixJobConfig }): Promise<MixJob>
-      updateJobAnalysis(id: number, result: AnalysisResult): Promise<void>
       retryJob(id: number): Promise<void>
       cancelJob(id: number): Promise<void>
       deleteJob(id: number): Promise<void>

@@ -2,7 +2,6 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { IpcRendererEvent } from 'electron'
 import type {
-  AnalysisResult,
   AppSettings,
   MixJob,
   MixJobConfig,
@@ -27,8 +26,6 @@ const api = {
   getJob: (id: number): Promise<MixJob | null> => ipcRenderer.invoke('jobs:get', id),
   createJob: (input: { name: string; config: MixJobConfig }): Promise<MixJob> =>
     ipcRenderer.invoke('jobs:create', input),
-  updateJobAnalysis: (id: number, result: AnalysisResult): Promise<void> =>
-    ipcRenderer.invoke('jobs:updateAnalysis', id, result),
   retryJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:retry', id),
   cancelJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:cancel', id),
   deleteJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:delete', id),
