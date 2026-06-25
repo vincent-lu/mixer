@@ -28,6 +28,7 @@ export interface PipelineOptions {
   sourceVideoPaths: string[]
   outputPath: string
   segmentDuration?: number
+  minSegmentDuration?: number
   onProgress?: OnProgress
   signal?: AbortSignal
 }

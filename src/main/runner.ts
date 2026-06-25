@@ -71,6 +71,7 @@ async function executeJob(job: MixJob): Promise<void> {
       bgmPath: job.config.bgmPath,
       sourceVideoPaths: job.config.sourceVideoPaths,
       outputPath,
+      minSegmentDuration: job.config.minSegmentDuration,
       onProgress: (stage, percent) => {
         const status = stage === 'analyzing' ? 'analyzing' : 'mixing'
         if (status !== lastStatus) {

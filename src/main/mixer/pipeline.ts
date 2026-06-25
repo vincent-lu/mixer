@@ -2,7 +2,7 @@ import { access, writeFile, unlink } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { probeVideo } from './probe'
-import { analyzeBgm, DEFAULT_SEGMENT_DURATION } from './analyze'
+import { analyzeBgm } from './analyze'
 import { buildSegmentPlan } from './segments'
 import { buildConcatFileContent, buildFfmpegArgs } from './concat'
 import { runFfmpeg } from './encode'
@@ -10,7 +10,8 @@ import type { PipelineOptions, PipelineResult } from './types'
 
 export async function runMixPipeline(options: PipelineOptions): Promise<PipelineResult> {
   const {
-    segmentDuration = DEFAULT_SEGMENT_DURATION,
+    segmentDuration,
+    minSegmentDuration,
     onProgress,
     signal,
   } = options
@@ -34,7 +35,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
   signal?.throwIfAborted()
 
   // Analyze BGM for cut points (also probes BGM duration internally)
-  const analysis = await analyzeBgm(bgmPath, segmentDuration)
+  const analysis = await analyzeBgm(bgmPath, { segmentDuration, minSegmentDuration })
 
   onProgress?.('analyzing', 60)
 

@@ -13,6 +13,7 @@ const outputDir = ref('')
 const outputFormat = ref<MixJobConfig['outputFormat']>('mp4')
 const videoResolution = ref<MixJobConfig['videoResolution']>('1080p')
 const sceneDetection = ref<MixJobConfig['sceneDetection']>('random')
+const minSegmentDuration = ref(4)
 
 const canStart = ref(true)
 
@@ -52,6 +53,7 @@ async function startMix(): Promise<void> {
       outputFormat: outputFormat.value,
       sceneDetection: sceneDetection.value,
       videoResolution: videoResolution.value,
+      minSegmentDuration: minSegmentDuration.value,
     }
     const name = `Mix — ${fileName(bgmPath.value)}`
     await store.create(name, config)
@@ -123,6 +125,20 @@ async function startMix(): Promise<void> {
           <option value="random">Random segments</option>
           <option value="ffmpeg">FFmpeg scene detection</option>
         </select>
+      </FormRow>
+
+      <FormRow label="Min Segment Duration">
+        <div class="number-input">
+          <input
+            v-model.number="minSegmentDuration"
+            type="number"
+            class="input"
+            min="0.2"
+            max="60"
+            step="0.1"
+          />
+          <span class="input-suffix">seconds</span>
+        </div>
       </FormRow>
 
       <button
@@ -222,14 +238,33 @@ async function startMix(): Promise<void> {
   color: #ef4444;
 }
 
-.select {
-  width: 100%;
+.select,
+.input {
   padding: 6px 10px;
   background: #1f2937;
   border: 1px solid #374151;
   border-radius: 6px;
   color: #d1d5db;
   font-size: 13px;
+}
+
+.select {
+  width: 100%;
+}
+
+.input {
+  width: 80px;
+}
+
+.number-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-suffix {
+  font-size: 13px;
+  color: #9ca3af;
 }
 
 .start-btn {
