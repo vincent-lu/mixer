@@ -102,7 +102,7 @@ describe('analyzeBgm', () => {
     expect(result.sectionTimings.at(-1)).toBe(120)
 
     for (let i = 1; i < result.sectionTimings.length; i++) {
-      expect(result.sectionTimings[i]! - result.sectionTimings[i - 1]!).toBeGreaterThanOrEqual(3.98)
+      expect(result.sectionTimings[i]! - result.sectionTimings[i - 1]!).toBeGreaterThanOrEqual(0.48)
     }
   })
 
@@ -127,7 +127,7 @@ describe('analyzeBgm', () => {
     expect(result.bpm).toBe(0)
     expect(result.sectionTimings[0]).toBe(0)
     expect(result.sectionTimings.at(-1)).toBe(120)
-    expect(result.sceneCount).toBe(30)
+    expect(result.sceneCount).toBe(240)
   })
 
   it('handles BGM shorter than one segment', async () => {

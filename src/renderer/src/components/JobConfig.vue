@@ -13,13 +13,24 @@ const outputDir = ref('')
 const outputFormat = ref<MixJobConfig['outputFormat']>('mp4')
 const videoResolution = ref<MixJobConfig['videoResolution']>('1080p')
 const sceneDetection = ref<MixJobConfig['sceneDetection']>('random')
-const minSegmentDuration = ref(4)
+const minSegmentDuration = ref(0.5)
+const outputFilename = ref('')
 
 const canStart = ref(true)
 
+function baseNameWithoutExt(path: string): string {
+  const name = path.split(/[/\\]/).pop() ?? path
+  return name.replace(/\.[^.]+$/, '')
+}
+
 async function pickBgm(): Promise<void> {
   const path = await platform.selectAudioFile()
-  if (path) bgmPath.value = path
+  if (path) {
+    bgmPath.value = path
+    if (!outputFilename.value) {
+      outputFilename.value = baseNameWithoutExt(path)
+    }
+  }
 }
 
 async function pickVideos(): Promise<void> {
@@ -54,8 +65,9 @@ async function startMix(): Promise<void> {
       sceneDetection: sceneDetection.value,
       videoResolution: videoResolution.value,
       minSegmentDuration: minSegmentDuration.value,
+      outputFilename: outputFilename.value || undefined,
     }
-    const name = `Mix — ${fileName(bgmPath.value)}`
+    const name = `Mix — ${outputFilename.value || fileName(bgmPath.value)}`
     await store.create(name, config)
   } finally {
     canStart.value = true
@@ -101,6 +113,15 @@ async function startMix(): Promise<void> {
           </button>
           <span class="file-path">{{ outputDir || 'No folder selected' }}</span>
         </div>
+      </FormRow>
+
+      <FormRow label="Output Filename">
+        <input
+          v-model="outputFilename"
+          type="text"
+          class="input filename-input"
+          placeholder="Auto-generated from BGM"
+        />
       </FormRow>
 
       <FormRow label="Output Format">
@@ -254,6 +275,10 @@ async function startMix(): Promise<void> {
 
 .input {
   width: 80px;
+}
+
+.input.filename-input {
+  width: 100%;
 }
 
 .number-input {

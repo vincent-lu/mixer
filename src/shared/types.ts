@@ -16,6 +16,7 @@ export interface MixJobConfig {
   sceneDetection: SceneDetectionMode
   videoResolution: VideoResolution
   minSegmentDuration?: number
+  outputFilename?: string
 }
 
 export interface AnalysisResult {

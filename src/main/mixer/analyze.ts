@@ -2,7 +2,7 @@ import type { AnalysisResult } from '@shared/types'
 import { extractPcm, detectBeats } from './audio'
 import { probeAudioDuration } from './probe'
 
-export const DEFAULT_SEGMENT_DURATION = 4
+export const DEFAULT_SEGMENT_DURATION = 0.5
 
 export interface AnalyzeOptions {
   segmentDuration?: number

@@ -86,7 +86,7 @@ async function main(): Promise<void> {
   if (args.segmentDuration !== undefined) {
     console.log(`Segment:  ${args.segmentDuration}s (fixed)`)
   } else {
-    console.log(`Min gap:  ${args.minSegment ?? 4}s`)
+    console.log(`Min gap:  ${args.minSegment ?? 0.5}s`)
   }
   console.log()
 
