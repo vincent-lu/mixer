@@ -5,6 +5,7 @@ import { closeDatabase, openDatabase } from './db/client'
 import { runMigrations } from './db/migrator'
 import { registerIpcHandlers } from './ipc'
 import { validateFfmpeg } from './ffmpeg/validate'
+import { startRunner, stopRunner } from './runner'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -59,6 +60,8 @@ app.whenReady().then(() => {
 
   createWindow()
 
+  startRunner()
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -69,5 +72,6 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  stopRunner()
   closeDatabase()
 })

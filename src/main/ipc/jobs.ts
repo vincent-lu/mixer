@@ -7,7 +7,6 @@ import type {
   ProgressStage,
 } from '../../shared/types'
 import {
-  cancelJob,
   completeJob,
   createJob,
   deleteJob,
@@ -18,6 +17,7 @@ import {
   updateJobProgress,
   updateJobStatus,
 } from '../db/jobs'
+import { cancelRunningJob, notifyNewJob } from '../runner'
 
 export function registerJobsHandlers(): void {
   ipcMain.handle('jobs:list', async (): Promise<MixJob[]> => {
@@ -31,7 +31,9 @@ export function registerJobsHandlers(): void {
   ipcMain.handle(
     'jobs:create',
     async (_event, input: { name: string; config: MixJobConfig }): Promise<MixJob> => {
-      return createJob(input)
+      const job = createJob(input)
+      notifyNewJob()
+      return job
     },
   )
 
@@ -68,7 +70,7 @@ export function registerJobsHandlers(): void {
   })
 
   ipcMain.handle('jobs:cancel', async (_event, id: number): Promise<void> => {
-    cancelJob(id)
+    cancelRunningJob(id)
   })
 
   ipcMain.handle('jobs:delete', async (_event, id: number): Promise<void> => {

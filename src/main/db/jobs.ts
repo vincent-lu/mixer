@@ -57,7 +57,10 @@ export function updateJobStatus(id: number, status: MixJobStatus): void {
   const db = getDb()
   const update: Record<string, unknown> = { status }
   if (status !== 'pending') {
-    update.startedAt = new Date()
+    const existing = db.select({ startedAt: jobs.startedAt }).from(jobs).where(eq(jobs.id, id)).get()
+    if (!existing?.startedAt) {
+      update.startedAt = new Date()
+    }
   }
   db.update(jobs).set(update).where(eq(jobs.id, id)).run()
 }

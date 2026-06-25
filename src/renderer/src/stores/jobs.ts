@@ -68,7 +68,7 @@ export const useJobsStore = defineStore('jobs', () => {
   function startPolling(): void {
     if (pollTimer) return
     pollTimer = setInterval(() => {
-      if (activeJobs.value.length > 0) {
+      if (activeJobs.value.length > 0 || pendingJobs.value.length > 0) {
         void load()
       }
     }, 1000)
