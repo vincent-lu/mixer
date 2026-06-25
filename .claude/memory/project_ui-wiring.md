@@ -28,7 +28,6 @@ Wire the existing Electron UI (JobConfig + JobQueue) to `runMixPipeline` from `s
 
 **Potential future work:**
 - Push-based progress via `webContents.send` for sub-second responsiveness
-- Remove vestigial IPC handlers (`jobs:updateStatus`, `jobs:updateProgress`, `jobs:complete`, `jobs:fail`) — runner owns all those transitions now
 - Retry mechanism for failed jobs
 
 **After this:** Replace fixed-interval analysis with BPM-driven beat detection ([[project-bpm-analysis]]).

@@ -9,11 +9,11 @@ metadata:
 
 Quality-of-life sprint to close small/foundational items before adding more features.
 
-**Current state:** Agreed scope, not yet started.
+**Current state:** Item 1 complete, items 2–4 remaining.
 
 **Items (in suggested order):**
 
-1. **Remove vestigial IPC handlers** — `jobs:updateStatus`, `jobs:updateProgress`, `jobs:complete`, `jobs:fail` in `src/main/ipc/jobs.ts` are no longer called from renderer; the runner owns those transitions now. Remove handlers + preload methods + Platform interface methods. ~30 min.
+1. ~~**Remove vestigial IPC handlers**~~ — Done (3725755). Removed `jobs:updateStatus`, `jobs:updateProgress`, `jobs:complete`, `jobs:fail` from IPC, preload, preload .d.ts, Platform interface, and electron.ts. `jobs:updateAnalysis` also vestigial but left as out-of-scope.
 
 2. **Fix stale design.md** — Audio Analysis section says "running in the renderer process" and "BPM detection only" but beat detection now runs in main process via `src/main/mixer/audio.ts` using `BeatTrackerMultiFeature`. Update to reflect reality. ~5 min.
 
