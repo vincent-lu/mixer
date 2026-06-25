@@ -4,6 +4,14 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-25 — Fix stale design.md audio analysis section
+
+**Decision:** Updated "Audio Analysis Pipeline" section to reflect current reality: essentia.js runs in the main process (not renderer), uses `BeatTrackerMultiFeature` (not `PercivalBpmEstimator`), beat selection with configurable min gap is implemented (not just BPM detection). Fixed-interval fallback documented.
+
+**Why:** Section was written at scaffold time and never updated through the BPM-driven beat detection implementation. Stale docs mislead future sessions.
+
+---
+
 ## 2026-06-25 — BPM-driven beat detection
 
 ### essentia.js BeatTrackerMultiFeature in Node.js main process

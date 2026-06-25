@@ -95,17 +95,17 @@ pending → analyzing → mixing → done
 
 ## Audio Analysis Pipeline
 
-Uses essentia.js (WASM) running in the renderer process:
+Uses essentia.js (WASM) running in the main process (`src/main/mixer/audio.ts`). PCM extracted via ffmpeg, then analyzed synchronously.
 
-1. **BPM detection** (`PercivalBpmEstimator`) — determines base tempo
-2. **Beat tracking** (planned: `BeatTrackerMultiFeature`) — finds beat positions
+1. **Beat detection** (`BeatTrackerMultiFeature`) — finds beat positions and derives BPM from median inter-beat interval
+2. **Beat selection** — filters beat ticks by configurable minimum gap (default 0.5s), producing scene switch timings
 3. **Onset detection** (planned: spectral flux) — detects musical events
 4. **Section segmentation** (planned) — identifies structural boundaries (verse/chorus/bridge)
 5. **Transition scoring** (planned) — scores beat positions as scene switch candidates
 
-Currently implemented: BPM detection only.
+Currently implemented: beat detection + beat selection. Falls back to fixed-interval timing if beat detection fails.
 
-`AnalysisResult` is designed with all layers as optional fields — the mixing pipeline uses whatever is available, falling back to simpler strategies (e.g., random timing) when higher layers are absent. This allows incremental analysis improvements without restructuring the pipeline.
+`AnalysisResult` is designed with all layers as optional fields — the mixing pipeline uses whatever is available, falling back to simpler strategies (e.g., fixed-interval timing) when higher layers are absent. This allows incremental analysis improvements without restructuring the pipeline.
 
 ## ffmpeg Integration
 
