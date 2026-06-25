@@ -55,13 +55,39 @@ describe('buildSegmentPlan', () => {
     expect(consecutiveViolations).toBeLessThan(plan.segments.length * 0.1)
   })
 
-  it('wraps cursor when source video is shorter than total needed', () => {
-    // 30 segments of 4s = 120s per source (10 segments each), but videos are only 30s
+  it('uses proportional advancement when video is shorter than total needed', () => {
+    // 10 segments of 4s assigned to a 30s video → stride = 30/10 = 3s
     const plan = buildSegmentPlan(makeAnalysis(4, 120), makeProbes(3, 30))
 
     for (const seg of plan.segments) {
       expect(seg.inpoint).toBeGreaterThanOrEqual(0)
       expect(seg.outpoint).toBeLessThanOrEqual(30)
+    }
+
+    // Segments for each source should advance proportionally, not restart
+    const bySource = [0, 1, 2].map((idx) =>
+      plan.segments.filter((s) => s.sourceIndex === idx),
+    )
+    for (const sourceSegs of bySource) {
+      for (let i = 1; i < sourceSegs.length; i++) {
+        expect(sourceSegs[i]!.inpoint).toBeGreaterThan(sourceSegs[i - 1]!.inpoint)
+      }
+    }
+  })
+
+  it('spreads single short video across full BGM without restart', () => {
+    // 1 video of 30s, BGM of 120s, segments of 4s → 30 segments, stride = 30/30 = 1s
+    const plan = buildSegmentPlan(makeAnalysis(4, 120), makeProbes(1, 30))
+
+    expect(plan.segments).toHaveLength(30)
+    // Each segment should start 1s after the previous
+    for (let i = 1; i < plan.segments.length; i++) {
+      const gap = plan.segments[i]!.inpoint - plan.segments[i - 1]!.inpoint
+      expect(gap).toBeCloseTo(1, 5)
+    }
+    // No inpoint should be 0 after the first segment (no restart)
+    for (let i = 1; i < plan.segments.length; i++) {
+      expect(plan.segments[i]!.inpoint).toBeGreaterThan(0)
     }
   })
 
