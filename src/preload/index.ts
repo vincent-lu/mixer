@@ -5,9 +5,7 @@ import type {
   AppSettings,
   MixJob,
   MixJobConfig,
-  MixJobStatus,
   Preset,
-  ProgressStage,
 } from '../shared/types'
 
 const api = {
@@ -27,16 +25,8 @@ const api = {
   getJob: (id: number): Promise<MixJob | null> => ipcRenderer.invoke('jobs:get', id),
   createJob: (input: { name: string; config: MixJobConfig }): Promise<MixJob> =>
     ipcRenderer.invoke('jobs:create', input),
-  updateJobStatus: (id: number, status: MixJobStatus): Promise<void> =>
-    ipcRenderer.invoke('jobs:updateStatus', id, status),
-  updateJobProgress: (id: number, progress: number, stage: ProgressStage): Promise<void> =>
-    ipcRenderer.invoke('jobs:updateProgress', id, progress, stage),
   updateJobAnalysis: (id: number, result: AnalysisResult): Promise<void> =>
     ipcRenderer.invoke('jobs:updateAnalysis', id, result),
-  completeJob: (id: number, outputPath: string): Promise<void> =>
-    ipcRenderer.invoke('jobs:complete', id, outputPath),
-  failJob: (id: number, error: string): Promise<void> =>
-    ipcRenderer.invoke('jobs:fail', id, error),
   cancelJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:cancel', id),
   deleteJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:delete', id),
 

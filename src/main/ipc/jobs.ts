@@ -1,22 +1,6 @@
 import { ipcMain } from 'electron'
-import type {
-  AnalysisResult,
-  MixJob,
-  MixJobConfig,
-  MixJobStatus,
-  ProgressStage,
-} from '../../shared/types'
-import {
-  completeJob,
-  createJob,
-  deleteJob,
-  failJob,
-  getJob,
-  listJobs,
-  updateJobAnalysis,
-  updateJobProgress,
-  updateJobStatus,
-} from '../db/jobs'
+import type { AnalysisResult, MixJob, MixJobConfig } from '../../shared/types'
+import { createJob, deleteJob, getJob, listJobs, updateJobAnalysis } from '../db/jobs'
 import { cancelRunningJob, notifyNewJob } from '../runner'
 
 export function registerJobsHandlers(): void {
@@ -38,36 +22,11 @@ export function registerJobsHandlers(): void {
   )
 
   ipcMain.handle(
-    'jobs:updateStatus',
-    async (_event, id: number, status: MixJobStatus): Promise<void> => {
-      updateJobStatus(id, status)
-    },
-  )
-
-  ipcMain.handle(
-    'jobs:updateProgress',
-    async (_event, id: number, progress: number, stage: ProgressStage): Promise<void> => {
-      updateJobProgress(id, progress, stage)
-    },
-  )
-
-  ipcMain.handle(
     'jobs:updateAnalysis',
     async (_event, id: number, result: AnalysisResult): Promise<void> => {
       updateJobAnalysis(id, result)
     },
   )
-
-  ipcMain.handle(
-    'jobs:complete',
-    async (_event, id: number, outputPath: string): Promise<void> => {
-      completeJob(id, outputPath)
-    },
-  )
-
-  ipcMain.handle('jobs:fail', async (_event, id: number, error: string): Promise<void> => {
-    failJob(id, error)
-  })
 
   ipcMain.handle('jobs:cancel', async (_event, id: number): Promise<void> => {
     cancelRunningJob(id)

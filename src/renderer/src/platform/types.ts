@@ -20,11 +20,7 @@ export interface Platform {
   listJobs(): Promise<MixJob[]>
   getJob(id: number): Promise<MixJob | null>
   createJob(input: { name: string; config: MixJobConfig }): Promise<MixJob>
-  updateJobStatus(id: number, status: MixJobStatus): Promise<void>
-  updateJobProgress(id: number, progress: number, stage: ProgressStage): Promise<void>
   updateJobAnalysis(id: number, result: AnalysisResult): Promise<void>
-  completeJob(id: number, outputPath: string): Promise<void>
-  failJob(id: number, error: string): Promise<void>
   cancelJob(id: number): Promise<void>
   deleteJob(id: number): Promise<void>
 

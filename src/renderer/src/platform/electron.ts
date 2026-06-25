@@ -12,11 +12,7 @@ export const electronPlatform: Platform = {
   listJobs: () => window.api.listJobs(),
   getJob: (id) => window.api.getJob(id),
   createJob: (input) => window.api.createJob(input),
-  updateJobStatus: (id, status) => window.api.updateJobStatus(id, status),
-  updateJobProgress: (id, progress, stage) => window.api.updateJobProgress(id, progress, stage),
   updateJobAnalysis: (id, result) => window.api.updateJobAnalysis(id, result),
-  completeJob: (id, outputPath) => window.api.completeJob(id, outputPath),
-  failJob: (id, error) => window.api.failJob(id, error),
   cancelJob: (id) => window.api.cancelJob(id),
   deleteJob: (id) => window.api.deleteJob(id),
 
