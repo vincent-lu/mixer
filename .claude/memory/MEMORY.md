@@ -2,6 +2,7 @@
 
 ## Feedback
 - [Concat escaping](feedback_pre-commit-concat.md) — ffconcat uses single-quote escaping, not double-quote; reviewer was wrong
+- [Integration tests for WASM](feedback_integration-tests-wasm.md) — always test real library with real fixtures; mocks hide API contract issues
 
 ## Project state
 - [PMV_Generator reference](project_reference-pmv-generator.md) — what mixer kept/dropped from the Python predecessor
