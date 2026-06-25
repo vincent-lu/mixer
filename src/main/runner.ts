@@ -111,8 +111,8 @@ async function executeJob(job: MixJob): Promise<void> {
 
 function buildOutputPath(job: MixJob): string {
   const baseName = job.config.outputFilename
-    ? job.config.outputFilename.replace(/[^a-zA-Z0-9 _-]/g, '_').trim()
-    : job.name.replace(/[^a-zA-Z0-9 _-]/g, '_').trim()
+    ? job.config.outputFilename.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim()
+    : job.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim()
   const sanitized = baseName || 'mix'
   const ext = job.config.outputFormat
   const dir = job.config.outputDir
