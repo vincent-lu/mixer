@@ -4,6 +4,24 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-25 — Job runner: UI-to-pipeline wiring
+
+### Main-process runner with DB-polling progress model
+
+**Decision:** Add `src/main/runner.ts` as a module-level singleton (no class). Runner is event-driven — `notifyNewJob()` triggers queue check, no polling interval. `processQueue()` reads `maxConcurrency` from `appState`, picks oldest pending jobs (FIFO), fire-and-forgets `executeJob()`. Each job gets its own `AbortController` stored in a `Map<number, AbortController>`.
+
+**Why:** Event-driven avoids wasteful polling in the runner. Module-level functions + Map is simpler than a class for what's effectively a singleton. FIFO ordering matches user expectation (first created, first processed).
+
+**Progress model:** Runner writes progress to DB via `updateJobProgress()`; renderer's Pinia store polls every 1s. Kept the existing pull model rather than adding `webContents.send` push — simpler, already works, ~1s latency is acceptable for video processing that takes minutes.
+
+**Cancellation:** `jobs:cancel` IPC handler calls `cancelRunningJob(id)` which aborts the controller for running jobs or directly updates DB for pending jobs. The pipeline's catch handler marks the DB as cancelled — single write, no double-update.
+
+**Startup recovery:** `startRunner()` marks any jobs stuck in `analyzing`/`mixing` as `failed` (from prior crash), then processes pending queue.
+
+**Alternative considered:** Push-based progress via `webContents.send` — deferred as optimization. Worker thread for the runner — unnecessary, pipeline is already async and JS single-threadedness simplifies concurrency reasoning.
+
+---
+
 ## 2026-06-25 — MVP mixing pipeline implementation
 
 ### CLI-first pipeline with concat demuxer strategy

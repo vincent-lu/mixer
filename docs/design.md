@@ -138,6 +138,22 @@ probe → analyze → plan segments → concat + encode
 
 **CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s>]`
 
+## Job Runner
+
+Main-process job runner in `src/main/runner.ts`. Bridges UI job creation to the mixing pipeline.
+
+**Flow:** `jobs:create` IPC → `notifyNewJob()` → `processQueue()` → `executeJob()` → `runMixPipeline()`
+
+**Concurrency:** FIFO queue respecting `maxConcurrency` from `appState` (default 2, range 1–8). When a job completes or fails, `processQueue()` re-checks for pending work.
+
+**Progress:** Pipeline `onProgress` callback writes to DB (`updateJobProgress`). Renderer polls every 1s via Pinia store. Status transitions tracked to avoid redundant DB writes.
+
+**Cancellation:** `AbortController` per running job, stored in `Map<number, AbortController>`. Cancel from UI → `cancelRunningJob(id)` → `controller.abort()` → pipeline exits → catch handler marks job cancelled.
+
+**Startup recovery:** Jobs stuck in `analyzing`/`mixing` from a prior crash are marked `failed`. Pending jobs are picked up automatically.
+
+**Shutdown:** `stopRunner()` sets a `stopped` flag (prevents `processQueue` re-entry), aborts all controllers, clears the map.
+
 ## Video Preprocessing
 
 Source videos are normalized to a common format before mixing. Ensures the concat pipeline works cleanly regardless of input codec/resolution variety.
@@ -201,11 +217,9 @@ Designed, not yet implemented:
 - Visual effects / transitions (ffmpeg xfade as starting point)
 
 Not yet designed:
-- Electron UI wiring to mixing pipeline
 - Multi-layer audio analysis (beat tracking + onset + segmentation)
 - ffmpeg scene detection integration
-- Job concurrency management (respecting maxConcurrency)
-- Progress reporting from ffmpeg stderr
+- Push-based progress (webContents.send to replace polling)
 - Preset save/load UI
 - Output preview
 - Batch operations
