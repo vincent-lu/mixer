@@ -33,6 +33,13 @@ export interface PipelineOptions {
   signal?: AbortSignal
 }
 
+export interface NormalizePreset {
+  codec: string
+  width: number
+  height: number
+  fps: number
+}
+
 export interface PipelineResult {
   outputPath: string
   totalDuration: number

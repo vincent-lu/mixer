@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process'
-import type { OnProgress } from './types'
 
 const TIME_RE = /time=(\d{2}):(\d{2}):(\d{2}\.\d+)/
 const STDERR_TAIL_LINES = 20
@@ -13,7 +12,7 @@ function parseTime(line: string): number | null {
 export function runFfmpeg(
   args: string[],
   totalDuration: number,
-  onProgress?: OnProgress,
+  onProgress?: (percent: number) => void,
   signal?: AbortSignal,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -25,7 +24,7 @@ export function runFfmpeg(
 
     child.on('close', (code) => {
       if (code === 0) {
-        onProgress?.('mixing', 100)
+        onProgress?.(100)
         resolve()
       } else if (signal?.aborted) {
         reject(signal.reason ?? new DOMException('Aborted', 'AbortError'))
@@ -47,7 +46,7 @@ export function runFfmpeg(
           const time = parseTime(line)
           if (time !== null) {
             const percent = Math.min(100, Math.round((time / totalDuration) * 100))
-            onProgress('mixing', percent)
+            onProgress(percent)
           }
         }
       }

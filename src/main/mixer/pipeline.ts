@@ -2,6 +2,7 @@ import { access, writeFile, unlink } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { probeVideo } from './probe'
+import { normalizeVideos, DEFAULT_PRESET } from './normalize'
 import { analyzeBgm } from './analyze'
 import { buildSegmentPlan } from './segments'
 import { buildConcatFileContent, buildFfmpegArgs } from './concat'
@@ -26,23 +27,25 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
   await Promise.all(sourceVideoPaths.map((p) => access(p)))
 
   signal?.throwIfAborted()
-  onProgress?.('analyzing', 0)
 
   // Probe source videos
   const probes = await Promise.all(sourceVideoPaths.map((p) => probeVideo(p)))
 
-  onProgress?.('analyzing', 30)
+  signal?.throwIfAborted()
+
+  // Normalize source videos to common format (skips if all already match)
+  const normalizedProbes = await normalizeVideos(probes, DEFAULT_PRESET, onProgress, signal)
+
   signal?.throwIfAborted()
 
   // Analyze BGM for cut points (also probes BGM duration internally)
   const analysis = await analyzeBgm(bgmPath, { segmentDuration, minSegmentDuration })
 
-  onProgress?.('analyzing', 60)
+  onProgress?.('analyzing', 100)
 
   // Plan segments
-  const plan = buildSegmentPlan(analysis, probes)
+  const plan = buildSegmentPlan(analysis, normalizedProbes)
 
-  onProgress?.('analyzing', 100)
   signal?.throwIfAborted()
 
   // Write concat file to temp location
@@ -52,7 +55,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
 
     // Run ffmpeg
     const args = buildFfmpegArgs(concatPath, bgmPath, outputPath)
-    await runFfmpeg(args, analysis.bgmDuration, onProgress, signal)
+    await runFfmpeg(args, analysis.bgmDuration, onProgress && ((pct) => onProgress('mixing', pct)), signal)
   } finally {
     await unlink(concatPath).catch(() => {})
   }

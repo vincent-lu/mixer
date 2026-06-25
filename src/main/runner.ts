@@ -81,7 +81,7 @@ async function executeJob(job: MixJob): Promise<void> {
       outputPath,
       minSegmentDuration: job.config.minSegmentDuration,
       onProgress: (stage, percent) => {
-        const status = stage === 'analyzing' ? 'analyzing' : 'mixing'
+        const status = stage === 'mixing' || stage === 'encoding' ? 'mixing' : 'analyzing'
         if (status !== lastStatus) {
           updateJobStatus(job.id, status)
           lastStatus = status

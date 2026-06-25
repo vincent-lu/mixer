@@ -4,6 +4,24 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-25 — Video preprocessing: in-place normalization
+
+**Decision:** Normalize source videos to a target preset (h264, 1920x1080, 30fps) before mixing. Videos already matching the preset are skipped. Normalization replaces the original file in-place via atomic temp-write + `rename()`. All videos normalize concurrently via `Promise.all`. Progress reported as a `normalizing` stage, mapped to the `analyzing` job status.
+
+**Why:** The concat demuxer re-encodes the final output, but mixed resolutions produce inconsistent visual quality and mixed framerates cause stuttering at cut points. Probing first avoids unnecessary re-encoding for videos that already match.
+
+**In-place replacement over cache:** Simpler than maintaining a parallel cache — no cache directory, no invalidation logic, no duplicate files. After normalization, subsequent runs probe the file, see it matches the preset, and skip. The trade-off is destructive (original encoding lost), but for a personal-use mixer where content matters more than codec, this is acceptable. Audio is preserved with `-c:a copy`.
+
+**Atomicity:** Write to a temp file (`.mixer-norm-{timestamp}{ext}`) in the same directory as the original, then `rename()` over it. Same-filesystem `rename` is atomic on POSIX, preventing corruption if normalization fails mid-encode.
+
+**Local path requirement:** Normalization only runs on local drives (`/Users/*` on macOS, drive letter on Windows). Network/external paths throw a descriptive error. This avoids slow writes to remote storage. The practical workaround is copying assets locally first.
+
+**`runFfmpeg` generalization:** Changed `runFfmpeg`'s `onProgress` param from `OnProgress` (stage + percent) to `(percent: number) => void`. Callers wrap with the appropriate stage. This lets both `encode.ts` and `normalize.ts` reuse the same ffmpeg progress parser.
+
+**Alternative considered:** Cache alongside originals with deterministic filenames — rejected because in-place is simpler and cache invalidation adds complexity for no benefit in a personal-use tool.
+
+---
+
 ## 2026-06-25 — Push-based progress replaces polling
 
 **Decision:** Replace 1s DB-polling in Pinia store with push events from the runner via `webContents.send`. Two event types: `job:progress` (lightweight `{id, progress, stage}` for frequent updates) and `job:status-change` (full `MixJob` for infrequent state transitions). Runner broadcasts via `BrowserWindow.getAllWindows()`. Preload exposes `onJobProgress`/`onJobStatusChange` returning unsubscribe functions. Store subscribes on mount, unsubscribes on unmount.

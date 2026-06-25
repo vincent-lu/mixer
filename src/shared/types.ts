@@ -1,6 +1,6 @@
 export type MixJobStatus = 'pending' | 'analyzing' | 'mixing' | 'done' | 'failed' | 'cancelled'
 
-export type ProgressStage = 'analyzing' | 'mixing' | 'encoding'
+export type ProgressStage = 'normalizing' | 'analyzing' | 'mixing' | 'encoding'
 
 export type SceneDetectionMode = 'random' | 'ffmpeg'
 

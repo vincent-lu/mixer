@@ -49,7 +49,7 @@ Mixing job with full lifecycle tracking.
 | config | JSON | `MixJobConfig` — BGM path, video paths, output settings |
 | analysis_result | JSON | `AnalysisResult` — BPM, section timings, scene count |
 | progress | integer | 0-100 |
-| progress_stage | text | `analyzing`, `mixing`, or `encoding` |
+| progress_stage | text | `normalizing`, `analyzing`, `mixing`, or `encoding` |
 | error | text | populated on failure |
 | output_path | text | final output file path |
 | created_at | integer | unix-ms |
@@ -157,15 +157,19 @@ Main-process job runner in `src/main/runner.ts`. Bridges UI job creation to the 
 
 ## Video Preprocessing
 
-Source videos are normalized to a common format before mixing. Ensures the concat pipeline works cleanly regardless of input codec/resolution variety.
+Source videos are normalized to a common format before mixing. Ensures consistent resolution, framerate, and codec across all segments.
 
-**Pipeline:**
-1. **Probe** — `ffprobe` reads codec, resolution, framerate, duration
-2. **Match check** — compare against target preset (default: h264, 1080p, 30fps)
-3. **Normalize** (if needed) — re-encode to target preset; skip if already matching
-4. **Cache** — normalized files stored alongside originals, reused across jobs
+**Pipeline** (`src/main/mixer/normalize.ts`):
+1. **Probe** — `probeVideo()` reads codec, resolution, framerate, duration (already done by pipeline)
+2. **Match check** — `needsNormalization()` compares against target preset (default: h264, 1920x1080, 30fps). Videos already matching are skipped.
+3. **Normalize** (if needed) — re-encode to target preset via ffmpeg. Scale with aspect ratio preservation + black padding. Audio streams preserved (`-c:a copy`).
+4. **In-place replace** — write to temp file in same directory, atomic `rename()` over original. No cache directory or duplicate files.
 
-Normalization runs per source video and parallelizes naturally across videos.
+**Local path requirement:** Normalization requires source videos on a local drive (`/Users/*` on macOS, drive letter on Windows). Network/external paths fail with a descriptive error — copy assets locally before mixing.
+
+**Parallelization:** All videos normalize concurrently via `Promise.all`. Progress weighted by duration for accurate reporting.
+
+**Progress stage:** Reports as `normalizing` (0–100%), mapped to `analyzing` job status. Stage is skipped entirely if all videos already match the preset.
 
 ## Scene Selection
 
@@ -214,7 +218,6 @@ Test candidates (as features are built):
 ## Deferred
 
 Designed, not yet implemented:
-- Video preprocessing pipeline (probe + conditional normalization)
 - Visual effects / transitions (ffmpeg xfade as starting point)
 
 Not yet designed:
