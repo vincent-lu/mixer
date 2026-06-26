@@ -74,7 +74,7 @@ Singleton row (id=1) for global settings.
 
 | Column | Type | Default |
 |--------|------|---------|
-| max_concurrency | integer | 2 |
+| max_concurrency | integer | 1 |
 | default_output_dir | text | null |
 | last_used_preset_id | integer FK | null |
 
@@ -168,7 +168,7 @@ Main-process job runner in `src/main/runner.ts`. Bridges UI job creation to the 
 
 **Flow:** `jobs:create` IPC → `notifyNewJob()` → `processQueue()` → `executeJob()` → `runMixPipeline()`
 
-**Concurrency:** FIFO queue respecting `maxConcurrency` from `appState` (default 2, range 1–8). When a job completes or fails, `processQueue()` re-checks for pending work.
+**Concurrency:** FIFO queue respecting `maxConcurrency` from `appState` (default 1, range 1–8). When a job completes or fails, `processQueue()` re-checks for pending work.
 
 **Progress:** Pipeline `onProgress` callback writes to DB (`updateJobProgress`) and broadcasts `job:progress` event via `webContents.send`. Status transitions broadcast full job via `job:status-change`. Pinia store subscribes to push events on mount — no polling. Status transitions tracked to avoid redundant DB writes.
 

@@ -15,13 +15,16 @@ const videoResolution = ref<MixJobConfig['videoResolution']>('1080p')
 const sceneDetection = ref<MixJobConfig['sceneDetection']>('random')
 const minSegmentDuration = ref(0.5)
 const outputFilename = ref('')
-const maxConcurrency = ref(3)
+const maxConcurrency = ref(1)
 
 const canStart = ref(true)
 
 onMounted(async () => {
   const settings = await platform.getSettings()
   maxConcurrency.value = settings.maxConcurrency
+  if (settings.defaultOutputDir) {
+    outputDir.value = settings.defaultOutputDir
+  }
 })
 
 watch(maxConcurrency, (val) => {
@@ -52,7 +55,10 @@ async function pickVideos(): Promise<void> {
 
 async function pickOutputDir(): Promise<void> {
   const path = await platform.selectDirectory()
-  if (path) outputDir.value = path
+  if (path) {
+    outputDir.value = path
+    await platform.setDefaultOutputDir(path)
+  }
 }
 
 function removeVideo(index: number): void {
@@ -94,7 +100,7 @@ async function startMix(): Promise<void> {
         <div class="file-picker">
           <button class="picker-btn" @click="pickBgm">
             <FaIcon :icon="['fasr', 'music']" />
-            <span>Select audio file</span>
+            <span>Select file</span>
           </button>
           <span class="file-path">{{ bgmPath || 'No file selected' }}</span>
         </div>

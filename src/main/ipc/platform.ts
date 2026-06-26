@@ -32,12 +32,12 @@ export function registerPlatformHandlers(): void {
 
   ipcMain.handle('platform:selectAudioFile', async (): Promise<string | null> => {
     const result = await dialog.showOpenDialog({
-      title: 'Select audio file',
+      title: 'Select audio or video file',
       properties: ['openFile'],
       filters: [
         {
-          name: 'Audio files',
-          extensions: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma'],
+          name: 'Audio / Video files',
+          extensions: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma', 'mp4', 'mkv', 'mov', 'avi', 'webm'],
         },
       ],
     })

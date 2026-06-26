@@ -75,7 +75,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  maxConcurrency: 3,
+  maxConcurrency: 1,
   defaultOutputDir: null,
   lastUsedPresetId: null,
 }
