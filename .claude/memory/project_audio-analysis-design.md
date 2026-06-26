@@ -1,8 +1,10 @@
 ---
 name: project-audio-analysis-design
-description: Multi-layer audio analysis — all 4 sessions complete (types, detection, scoring, style-driven pacing, transitions).
-metadata:
+description: "Multi-layer audio analysis — all 4 sessions complete (types, detection, scoring, style-driven pacing, transitions, clip effects)."
+metadata: 
+  node_type: memory
   type: project
+  originSessionId: a42cd70d-77fb-4636-a381-01a0e4582151
 ---
 
 Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-analysis]] (beat detection, implemented).
@@ -26,18 +28,20 @@ Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-an
 - Wired through `PipelineOptions`, `runner.ts`, CLI `--style` flag
 - Validation: chill ~12-30 segments, hyperkinetic ~96-249 for 2-3 min songs
 
-**Session D (done, then overhauled):** Transition system — density/palette based:
-- `assignTransitions(plan, analysis, density, palette, style)` in `transitions.ts` — worthiness scoring (section boundary 1.0, top-quartile beat 0.6, regular 0.2), top density% get transitions
-- `TransitionAssignment { type: string, duration: number }` replaces old `TransitionType` union
-- 4 cumulative palettes: subtle (fades/dissolves), dynamic (+wipes/slides), cinematic (+reveals/zooms), aggressive (+glitch/pixelize)
-- Per-type durations (0.4–1.2s base) scaled by MixStyle (chill ×1.5 → hyperkinetic ×0.5)
-- Flash frames preserved as special case for extreme energy spikes (0.06s, not palette-driven)
-- Section boundary tolerance widened 0.5s → 1.0s
-- `buildFilterComplexArgs` accepts variable xfade types and durations per boundary
-- Dual-path preserved: density 0 → concat demuxer (fast path), density >0 → filter_complex
-- `enableTransitions` boolean removed from `MixJobConfig`, replaced by `transitionDensity` (0–100, default 30) + `transitionPalette` (default 'dynamic')
-- Backward compat: old DB records with `enableTransitions: true` → density 30 + dynamic; `false` → density 0
+**Session D (done, then overhauled twice):** Transition system — originally density/palette based, now density + single effect type:
+- `assignTransitions(plan, analysis, density, effect, style)` in `transitions.ts` — worthiness scoring (section boundary 1.0, top-quartile beat 0.6, regular 0.2), top density% get transitions
+- `TransitionEffect` type: 'cut' | 'circleopen' | 'fadewhite' | 'horzopen' | 'vertopen' | 'acid' | 'doublevision' | 'solarize' | 'strobe' | 'strobe_white'. One type per mix (no randomization). Custom transitions use `xfade=transition=custom:expr=...`
+- Per-type fixed durations (0.6–1.2s base) scaled by MixStyle (chill ×1.5 → hyperkinetic ×0.5)
+- Flash frames preserved as special case for extreme energy spikes (0.06s)
+- Dual-path preserved: effect 'cut' or density 0 → concat demuxer (fast path); otherwise → filter_complex
+- Old `TransitionPalette` (4 cumulative tiers) removed — replaced by explicit `TransitionEffect`
 
-**Post-sprint UI wiring (done, updated):** Mix Style dropdown (5 styles with inline hints), Transition Density slider (0–100%), Transition Style palette dropdown with hints, Min Segment Duration removed from UI. CLI: `--transition-density N`, `--transition-palette <name>`, `--no-transitions` as shorthand. BGM file picker accepts video files. Output dir persisted. Default concurrency 1.
+**Clip effects (done):** Per-segment visual effects in `effects.ts`:
+- 11 effect types: shake, shake_hard, shake_blur, zoompulse, kenburns, drift, vignette_pulse, hueshift, flashpulse, negflash, chromatic
+- `clipEffect` selects the type, `effectChance` (0–100%) determines per-segment probability (Math.random)
+- Effects append ffmpeg filter chains after trim→setpts→settb. Chromatic uses multi-stream split/blend with unique labels per segment
+- Effects compose independently with transitions. Presence of effects triggers filter_complex path (with padded all-cuts transitions if no transitions assigned)
 
-**How to apply:** Detection in `audio.ts`, scoring + selection in `analyze.ts`, transitions in `transitions.ts`, filter construction in `filter.ts`, types in `types.ts` + `types.ts` (mixer). Details in `docs/design.md` Audio Analysis Pipeline and Mixing Pipeline sections.
+**Post-sprint UI wiring (done, updated):** Mix Style dropdown, Transition Effect dropdown (10 types), Transition Density slider (hidden when Cut), Clip Effect dropdown (12 types), Effect Chance slider (hidden when None, defaults to 50% on first effect selection). CLI: `--transition-density N`, `--transition-effect <name>`, `--clip-effect <name>`, `--effect-chance N`, `--no-transitions` as shorthand. BGM file picker accepts video files. Output dir persisted. Default concurrency 1.
+
+**How to apply:** Detection in `audio.ts`, scoring + selection in `analyze.ts`, transitions in `transitions.ts`, effects in `effects.ts`, filter construction in `filter.ts`, types in `types.ts` + `types.ts` (mixer). Details in `docs/design.md` Audio Analysis Pipeline and Mixing Pipeline sections.
