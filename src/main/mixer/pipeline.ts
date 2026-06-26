@@ -9,6 +9,7 @@ import { buildConcatFileContent, buildFfmpegArgs } from './concat'
 import { runFfmpeg } from './encode'
 import { buildFilterComplexArgs } from './filter'
 import { assignTransitions } from './transitions'
+import { assignEffects } from './effects'
 import type { PipelineOptions, PipelineResult } from './types'
 
 export async function runMixPipeline(options: PipelineOptions): Promise<PipelineResult> {
@@ -17,7 +18,9 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
     minSegmentDuration,
     mixStyle,
     transitionDensity = 30,
-    transitionPalette = 'dynamic',
+    transitionEffect = 'cut', // runner.ts overrides to 'circleopen' for legacy DB records
+    clipEffect = 'none',
+    effectChance = 0,
     onProgress,
     signal,
   } = options
@@ -47,13 +50,19 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
 
   signal?.throwIfAborted()
 
-  const transitions = transitionDensity > 0
-    ? assignTransitions(plan, analysis, transitionDensity, transitionPalette, mixStyle ?? 'balanced')
+  const transitions = transitionDensity > 0 && transitionEffect !== 'cut'
+    ? assignTransitions(plan, analysis, transitionDensity, transitionEffect, mixStyle ?? 'balanced')
     : []
+  const effects = assignEffects(plan.segments.length, clipEffect, effectChance)
   const hasTransitions = transitions.some((t) => t.type !== 'cut')
+  const hasEffects = effects.length > 0
 
-  if (hasTransitions) {
-    const { inputArgs, filterScript, outputArgs } = buildFilterComplexArgs(plan, transitions, bgmPath, outputPath)
+  if (hasTransitions || hasEffects) {
+    // Empty when transitionEffect === 'cut'; padded with cuts for effects-only filter_complex path
+    const paddedTransitions = transitions.length > 0
+      ? transitions
+      : Array.from({ length: plan.segments.length - 1 }, () => ({ type: 'cut' as const, duration: 0 }))
+    const { inputArgs, filterScript, outputArgs } = buildFilterComplexArgs(plan, paddedTransitions, bgmPath, outputPath, effects)
     const filterPath = join(tmpdir(), `mixer-filter-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`)
     try {
       await writeFile(filterPath, filterScript, 'utf-8')

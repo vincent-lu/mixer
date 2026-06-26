@@ -134,7 +134,7 @@ Planned usage:
 CLI-first pipeline in `src/main/mixer/`, callable from both CLI (`pnpm mix`) and Electron IPC.
 
 ```
-probe → normalize → analyze → plan segments → assign transitions → encode
+probe → normalize → analyze → plan segments → assign transitions → assign effects → encode
 ```
 
 | Module | Role |
@@ -143,38 +143,32 @@ probe → normalize → analyze → plan segments → assign transitions → enc
 | `audio.ts` | PCM extraction (ffmpeg) + essentia.js beat detection |
 | `analyze.ts` | BGM timing analysis (beat detection default, fixed-interval fallback) |
 | `segments.ts` | Shuffled round-robin segment assignment with cursor tracking |
-| `transitions.ts` | Worthiness-based transition assignment with palette/density control |
+| `transitions.ts` | Worthiness-based transition assignment with density control |
+| `effects.ts` | Clip effect definitions + per-segment effect assignment |
 | `concat.ts` | Concat demuxer file builder + ffmpeg arg construction (hard cuts only) |
-| `filter.ts` | filter_complex arg builder for mixes with transitions |
+| `filter.ts` | filter_complex arg builder for mixes with transitions and/or effects |
 | `encode.ts` | Spawn ffmpeg, parse progress from stderr, abort support |
 | `pipeline.ts` | Orchestrator — single async function, self-contained per invocation |
 
 **Dual-path ffmpeg strategy:**
-- **Concat demuxer** (fast path): when all transitions are hard cuts. `inpoint`/`outpoint` per segment, single ffmpeg command, no temp files.
-- **filter_complex** (transition path): when any non-cut transitions are assigned. One `-i` per segment with `-ss` seeking, `trim`+`setpts`+`settb=AVTB` per segment, grouped `concat` for consecutive hard cuts, `xfade` with variable type/duration for palette transitions, `fade`+`concat` for flash frames. Single ffmpeg command, single encoding pass.
+- **Concat demuxer** (fast path): when all transitions are hard cuts AND no clip effects assigned. `inpoint`/`outpoint` per segment, single ffmpeg command, no temp files.
+- **filter_complex** (transition/effects path): when any non-cut transitions or clip effects are present. One `-i` per segment with `-ss` seeking, `trim`+`setpts`+`settb=AVTB`+optional effect chain per segment, grouped `concat` for consecutive hard cuts, `xfade` (built-in or custom expression) for transitions, `fade`+`concat` for flash frames. Single ffmpeg command, single encoding pass.
 
-Transition assignment uses a **density + palette** system. `transitionDensity` (0–100, default 30) controls what percentage of switch points get transitions. `transitionPalette` ('subtle' | 'dynamic' | 'cinematic' | 'aggressive', default 'dynamic') controls which visual effects are available. Density 0 skips `assignTransitions()` entirely and forces the concat demuxer fast path. Graceful degradation: absent analysis data → all cuts → concat demuxer path.
+**Transition system:** `transitionEffect` selects ONE transition type for the entire mix ('cut' | 'circleopen' | 'fadewhite' | 'horzopen' | 'vertopen' | 'acid' | 'doublevision' | 'solarize' | 'strobe' | 'strobe_white'). `transitionDensity` (0–100, default 30) controls what percentage of switch points get that transition. When `transitionEffect` is 'cut' or density is 0, all switches are hard cuts → concat demuxer fast path. Custom transitions (acid, doublevision, solarize, strobe, strobe_white) use `xfade=transition=custom:expr=...`.
+
+**Per-type durations** scaled by `MixStyle`: circleopen 0.6s, fadewhite 0.8s, horzopen/vertopen 0.6s, acid/doublevision 1.2s, solarize 1.0s, strobe/strobe_white 0.8s. Scale factors: chill ×1.5, relaxed ×1.2, balanced ×1.0, energetic ×0.7, hyperkinetic ×0.5.
 
 **Worthiness-based assignment:**
 1. Score every switch point: section boundary with energy change → 1.0, top-quartile beat score → 0.6, regular beat → 0.2
 2. Sort by worthiness, take top N% based on `transitionDensity`
-3. For each selected: extreme energy delta → flash frame, otherwise → xfade type from palette based on musical context (low energy → subtle types, section boundary → directional/dramatic, high energy → geometric/aggressive)
+3. For each selected: extreme energy delta → flash frame, otherwise → the chosen transition effect
 4. Remaining switches → hard cut
 
-**Palettes** (cumulative — each tier includes all types from tiers above):
+**Flash frames** remain as a special case (two 0.06s fades = 0.12s total, `fade=color=white`) for extreme energy spikes — fixed duration.
 
-| Palette | Adds | Character |
-|---------|------|-----------|
-| subtle | fade, dissolve, fadeblack, fadewhite, fadeslow | Clean, professional |
-| dynamic | + wipe/slide/smooth/cover/reveal left/right | Directional energy |
-| cinematic | + circleopen/close, radial, zoomin, vert/horzopen/close | Dramatic reveals |
-| aggressive | + pixelize, hblur, hlwind/hrwind, diag*, squeeze*, hlslice/hrslice | Glitch/EDM aesthetic |
+**Clip effects:** Per-segment visual effects applied after trim/setpts/settb in the filter graph. `clipEffect` selects the effect type ('none' | 'shake' | 'shake_hard' | 'shake_blur' | 'zoompulse' | 'kenburns' | 'drift' | 'vignette_pulse' | 'hueshift' | 'flashpulse' | 'negflash' | 'chromatic'). `effectChance` (0–100, default 0) is the probability each segment gets the effect. Effects compose independently with transitions — a segment can have any combination. Chromatic aberration uses multi-stream split/blend with unique intermediate labels per segment.
 
-**Per-type durations** scaled by `MixStyle`: fast geometric (0.4–0.5s base), medium reveals (0.6–0.8s), slow blends (0.8–1.2s). Scale factors: chill ×1.5, relaxed ×1.2, balanced ×1.0, energetic ×0.7, hyperkinetic ×0.5.
-
-**Flash frames** remain as a special case (two 0.06s fades = 0.12s total, `fade=color=white`) for extreme energy spikes — not palette-driven, fixed duration.
-
-**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--transition-density 0-100] [--transition-palette <name>] [--no-transitions]`
+**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--transition-density 0-100] [--transition-effect <name>] [--clip-effect <name>] [--effect-chance 0-100] [--no-transitions]`
 
 ## Job Runner
 

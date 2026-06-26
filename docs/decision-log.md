@@ -4,6 +4,24 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-26 — Clip effects + transition simplification
+
+**Decision:** Add per-segment clip effects (11 effect types plus 'none': shake, shake_hard, shake_blur, zoompulse, kenburns, drift, vignette_pulse, hueshift, flashpulse, negflash, chromatic) and simplify transitions from palette-based random selection to single-effect-per-mix.
+
+**Effects:** Each clip effect maps to an ffmpeg filter chain appended after `trim→setpts→settb` in the filter graph. `clipEffect` selects the type, `effectChance` (0–100%) determines per-segment probability. Effects compose independently with transitions. Chromatic aberration uses multi-stream split/blend with unique intermediate labels (`cr{i}`, `cg{i}`, etc.) to avoid label collisions.
+
+**Transition simplification:** Replaced `TransitionPalette` (4 cumulative tiers of ~40 xfade types with context-aware random selection) with `TransitionEffect` (10 specific types, one used for the entire mix). 5 custom transitions (acid, doublevision, solarize, strobe, strobe_white) use `xfade=transition=custom:expr=...`. Worthiness scoring and density control retained — only the type selection changed.
+
+**Why:** The palette system produced unpredictable visual character — the same mix could look different each run because types were randomly selected within a tier. Single-type-per-mix gives the user exact control over the visual style. Clip effects add creative expression without affecting timing or transition logic.
+
+**Dual-path routing updated:** filter_complex path now triggers when transitions OR effects are present. Concat demuxer fast path requires both `transitionEffect === 'cut'` (or density 0) AND no effects.
+
+**Backward compat:** Old DB jobs with `transitionPalette` fall back to `transitionEffect: 'circleopen'`. New fields (`clipEffect`, `effectChance`) default to `'none'`/`0` when absent.
+
+**Dropped:** `speedramp` effect was considered and rejected — it changes segment duration, causing audio-video desync.
+
+---
+
 ## 2026-06-26 — Transition density/palette system
 
 **Decision:** Replace the boolean `enableTransitions` toggle with a density (0–100%) + palette (subtle/dynamic/cinematic/aggressive) system. Transitions are assigned via worthiness scoring: section boundaries with energy changes score highest (1.0), high-scoring beats next (0.6), regular beats lowest (0.2). Top N% by density get transitions; the rest are hard cuts. Palette controls which xfade effects are available (cumulative tiers). Per-type durations scale with MixStyle.

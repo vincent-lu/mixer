@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildFilterComplexArgs } from '../filter'
 import type { Segment, SegmentPlan, TransitionAssignment } from '../types'
+import type { EffectAssignment } from '../effects'
 
 function makePlan(count: number, segDur: number): SegmentPlan {
   const segments: Segment[] = []
@@ -143,5 +144,51 @@ describe('buildFilterComplexArgs', () => {
     }, [])
     expect(ssIndices.length).toBe(3)
     expect(inputArgs[ssIndices[1]! + 1]).toBe('10')
+  })
+
+  it('appends simple effect chain to segment', () => {
+    const plan = makePlan(3, 4)
+    const transitions = [CUT, CUT]
+    const effects: EffectAssignment[] = [{ segmentIndex: 1, effect: 'hueshift' }]
+    const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4', effects)
+
+    expect(filterScript).toContain('settb=AVTB,hue=h=t*90[v1]')
+    expect(filterScript).toContain('settb=AVTB[v0]')
+    expect(filterScript).toContain('settb=AVTB[v2]')
+  })
+
+  it('handles chromatic multi-stream effect', () => {
+    const plan = makePlan(2, 4)
+    const transitions = [CUT]
+    const effects: EffectAssignment[] = [{ segmentIndex: 0, effect: 'chromatic' }]
+    const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4', effects)
+
+    expect(filterScript).toContain('split=3[cr0][cg0][cb0]')
+    expect(filterScript).toContain('[cr0]lutrgb=g=0:b=0')
+    expect(filterScript).toContain('blend=all_mode=addition[v0]')
+    expect(filterScript).toContain('settb=AVTB[v1]')
+  })
+
+  it('composes effects with transitions', () => {
+    const plan = makePlan(3, 4)
+    const transitions = [xfade('fade', 0.4), CUT]
+    const effects: EffectAssignment[] = [{ segmentIndex: 0, effect: 'vignette_pulse' }]
+    const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4', effects)
+
+    expect(filterScript).toContain('settb=AVTB,vignette=PI/4+PI/4*sin(t*4)[v0]')
+    expect(filterScript).toContain('xfade=transition=fade')
+  })
+
+  it('effects-only path includes all segments', () => {
+    const plan = makePlan(4, 3)
+    const transitions = [CUT, CUT, CUT]
+    const effects: EffectAssignment[] = [{ segmentIndex: 2, effect: 'shake' }]
+    const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4', effects)
+
+    expect(filterScript).toContain('[v0]')
+    expect(filterScript).toContain('[v1]')
+    expect(filterScript).toContain('[v2]')
+    expect(filterScript).toContain('[v3]')
+    expect(filterScript).toContain('concat=n=4')
   })
 })

@@ -1,4 +1,4 @@
-import type { MixStyle, ProgressStage, TransitionPalette } from '@shared/types'
+import type { ClipEffect, MixStyle, ProgressStage, TransitionEffect } from '@shared/types'
 
 export interface TransitionAssignment {
   type: string
@@ -36,7 +36,9 @@ export interface PipelineOptions {
   minSegmentDuration?: number
   mixStyle?: MixStyle
   transitionDensity?: number
-  transitionPalette?: TransitionPalette
+  transitionEffect?: TransitionEffect
+  clipEffect?: ClipEffect
+  effectChance?: number
   onProgress?: OnProgress
   signal?: AbortSignal
 }

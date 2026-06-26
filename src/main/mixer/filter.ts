@@ -1,5 +1,8 @@
 import type { SegmentPlan, TransitionAssignment } from './types'
-import { FLASH_FADE_DURATION } from './transitions'
+import { CUSTOM_TRANSITION_EXPRS, FLASH_FADE_DURATION } from './transitions'
+import type { TransitionEffect } from '@shared/types'
+import type { EffectAssignment } from './effects'
+import { getEffectChain } from './effects'
 
 interface SegmentGroup {
   segmentIndices: number[]
@@ -43,6 +46,7 @@ export function buildFilterComplexArgs(
   transitions: TransitionAssignment[],
   bgmPath: string,
   outputPath: string,
+  effectAssignments: EffectAssignment[] = [],
 ): FilterComplexResult {
   const { segments } = plan
   const bgmInputIndex = segments.length
@@ -55,12 +59,28 @@ export function buildFilterComplexArgs(
 
   const filterParts: string[] = []
 
+  const effectMap = new Map(effectAssignments.map((a) => [a.segmentIndex, a.effect]))
+
   for (let i = 0; i < segments.length; i++) {
     let dur = segmentDuration(plan, i)
     if (i < transitions.length && isXfade(transitions[i]!)) {
       dur += transitions[i]!.duration
     }
-    filterParts.push(`[${i}:v]trim=duration=${dur},setpts=PTS-STARTPTS,settb=AVTB[v${i}]`)
+    const baseChain = `[${i}:v]trim=duration=${dur},setpts=PTS-STARTPTS,settb=AVTB`
+    const effect = effectMap.get(i)
+    const effectChain = effect ? getEffectChain(effect, i) : null
+    if (effectChain) {
+      const parts = effectChain.split(';')
+      filterParts.push(`${baseChain},${parts[0]}${parts.length === 1 ? `[v${i}]` : ''}`)
+      for (let p = 1; p < parts.length - 1; p++) {
+        filterParts.push(parts[p]!)
+      }
+      if (parts.length > 1) {
+        filterParts.push(`${parts[parts.length - 1]}[v${i}]`)
+      }
+    } else {
+      filterParts.push(`${baseChain}[v${i}]`)
+    }
   }
 
   const groups = groupSegments(transitions)
@@ -94,8 +114,12 @@ export function buildFilterComplexArgs(
     if (isXfade(t)) {
       const offset = (accDur - t.duration).toFixed(6)
       const outLabel = `x${ti}`
+      const customExpr = CUSTOM_TRANSITION_EXPRS[t.type as TransitionEffect]
+      const xfadeParams = customExpr
+        ? `transition=custom:expr='${customExpr}':duration=${t.duration}:offset=${offset}`
+        : `transition=${t.type}:duration=${t.duration}:offset=${offset}`
       filterParts.push(
-        `[${prevLabel}][${nextLabel}]xfade=transition=${t.type}:duration=${t.duration}:offset=${offset}[${outLabel}]`,
+        `[${prevLabel}][${nextLabel}]xfade=${xfadeParams}[${outLabel}]`,
       )
       accDur = accDur + nextDur - t.duration
       const nextTransition = nextGroup.transitionAfter

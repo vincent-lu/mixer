@@ -10,7 +10,9 @@ export type VideoResolution = '1080p' | '720p' | '480p' | 'source'
 
 export type MixStyle = 'chill' | 'relaxed' | 'balanced' | 'energetic' | 'hyperkinetic'
 
-export type TransitionPalette = 'subtle' | 'dynamic' | 'cinematic' | 'aggressive'
+export type TransitionEffect = 'cut' | 'circleopen' | 'fadewhite' | 'horzopen' | 'vertopen' | 'acid' | 'doublevision' | 'solarize' | 'strobe' | 'strobe_white'
+
+export type ClipEffect = 'none' | 'shake' | 'shake_hard' | 'shake_blur' | 'zoompulse' | 'kenburns' | 'drift' | 'vignette_pulse' | 'hueshift' | 'flashpulse' | 'negflash' | 'chromatic'
 
 export interface BeatInfo {
   time: number
@@ -36,7 +38,9 @@ export interface MixJobConfig {
   outputFilename?: string
   mixStyle?: MixStyle
   transitionDensity?: number
-  transitionPalette?: TransitionPalette
+  transitionEffect?: TransitionEffect
+  clipEffect?: ClipEffect
+  effectChance?: number
 }
 
 export interface AnalysisResult {

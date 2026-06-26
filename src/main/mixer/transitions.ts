@@ -1,44 +1,10 @@
-import type { AnalysisResult, BeatInfo, MixStyle, Section, TransitionPalette } from '@shared/types'
+import type { AnalysisResult, BeatInfo, MixStyle, Section, TransitionEffect } from '@shared/types'
 import type { SegmentPlan, TransitionAssignment } from './types'
 
 export const FLASH_FADE_DURATION = 0.06
 
 const SECTION_BOUNDARY_TOLERANCE = 1.0
 const ENERGY_DELTA_THRESHOLD = 0.3
-
-const SUBTLE_TYPES = ['fade', 'dissolve', 'fadeblack', 'fadewhite', 'fadeslow']
-const DYNAMIC_TYPES = [
-  'wipeleft', 'wiperight', 'slideleft', 'slideright',
-  'smoothleft', 'smoothright', 'coverleft', 'coverright',
-  'revealleft', 'revealright',
-]
-const CINEMATIC_TYPES = [
-  'circleopen', 'circleclose', 'radial', 'zoomin',
-  'vertopen', 'vertclose', 'horzopen', 'horzclose',
-]
-const AGGRESSIVE_TYPES = [
-  'pixelize', 'hblur', 'hlwind', 'hrwind',
-  'diagtl', 'diagtr', 'diagbl', 'diagbr',
-  'squeezeh', 'squeezev', 'hlslice', 'hrslice',
-]
-
-const PALETTE_TIERS: Record<TransitionPalette, string[]> = {
-  subtle: SUBTLE_TYPES,
-  dynamic: [...SUBTLE_TYPES, ...DYNAMIC_TYPES],
-  cinematic: [...SUBTLE_TYPES, ...DYNAMIC_TYPES, ...CINEMATIC_TYPES],
-  aggressive: [...SUBTLE_TYPES, ...DYNAMIC_TYPES, ...CINEMATIC_TYPES, ...AGGRESSIVE_TYPES],
-}
-
-interface DurationCategory {
-  base: [number, number]
-  types: Set<string>
-}
-
-const DURATION_CATEGORIES: DurationCategory[] = [
-  { base: [0.4, 0.5], types: new Set([...AGGRESSIVE_TYPES, 'wipeleft', 'wiperight', 'slideleft', 'slideright']) },
-  { base: [0.6, 0.8], types: new Set([...CINEMATIC_TYPES, 'coverleft', 'coverright', 'revealleft', 'revealright', 'smoothleft', 'smoothright']) },
-  { base: [0.8, 1.2], types: new Set(SUBTLE_TYPES) },
-]
 
 const STYLE_DURATION_SCALE: Record<MixStyle, number> = {
   chill: 1.5,
@@ -48,17 +14,29 @@ const STYLE_DURATION_SCALE: Record<MixStyle, number> = {
   hyperkinetic: 0.5,
 }
 
-function getBaseDuration(type: string): number {
-  for (const cat of DURATION_CATEGORIES) {
-    if (cat.types.has(type)) {
-      return (cat.base[0] + cat.base[1]) / 2
-    }
-  }
-  return 0.6
+const BASE_DURATIONS: Record<Exclude<TransitionEffect, 'cut'>, number> = {
+  circleopen: 0.6,
+  fadewhite: 0.8,
+  horzopen: 0.6,
+  vertopen: 0.6,
+  acid: 1.2,
+  doublevision: 1.2,
+  solarize: 1.0,
+  strobe: 0.8,
+  strobe_white: 0.8,
 }
 
-function scaledDuration(type: string, style: MixStyle): number {
-  return getBaseDuration(type) * STYLE_DURATION_SCALE[style]
+export const CUSTOM_TRANSITION_EXPRS: Partial<Record<TransitionEffect, string>> = {
+  acid: "A*(1-P)+B*P+80*sin(X/30+P*15)*sin(Y/25+P*12)*sin(P*20)*(1-abs(P-0.5)*2)",
+  doublevision: "A*(0.5+0.4*sin(P*12)*(1-P))+B*(0.5-0.4*sin(P*12)*P)",
+  solarize: "clip(abs((A*(1-P)+B*P)-128*(1-abs(P-0.5)*2)*2+128*(1-abs(P-0.5)*2)),0,255)",
+  strobe: "if(gt(sin(P*40),0),if(gt(P,0.5),B,A),0)",
+  strobe_white: "if(gt(sin(P*40),0),if(gt(P,0.5),B,A),255)",
+}
+
+export function transitionDuration(effect: TransitionEffect, style: MixStyle): number {
+  if (effect === 'cut') return 0
+  return BASE_DURATIONS[effect] * STYLE_DURATION_SCALE[style]
 }
 
 function findSectionAt(sections: Section[], time: number): Section | undefined {
@@ -127,45 +105,11 @@ function scoreWorthiness(
   return 0.2
 }
 
-function pickTypeForContext(
-  time: number,
-  sections: Section[],
-  beats: BeatInfo[],
-  availableTypes: string[],
-  maxEnergy: number,
-): string {
-  const section = findSectionAt(sections, time)
-  const energy = section?.energy ?? 'medium'
-
-  let preferred: string[]
-  if (isSectionBoundaryWithEnergyChange(sections, time)) {
-    preferred = availableTypes.filter((t) =>
-      DYNAMIC_TYPES.includes(t) || CINEMATIC_TYPES.includes(t),
-    )
-  } else if (energy === 'high') {
-    const idx = findNearestBeatIndex(beats, time)
-    const beat = beats[idx]
-    const normalizedEnergy = beat && maxEnergy > 0 ? beat.energy / maxEnergy : 0
-    if (normalizedEnergy > 0.7) {
-      preferred = availableTypes.filter((t) =>
-        CINEMATIC_TYPES.includes(t) || AGGRESSIVE_TYPES.includes(t),
-      )
-    } else {
-      preferred = availableTypes.filter((t) => DYNAMIC_TYPES.includes(t))
-    }
-  } else {
-    preferred = availableTypes.filter((t) => SUBTLE_TYPES.includes(t))
-  }
-
-  const pool = preferred.length > 0 ? preferred : availableTypes
-  return pool[Math.floor(Math.random() * pool.length)]!
-}
-
 export function assignTransitions(
   plan: SegmentPlan,
   analysis: AnalysisResult,
   density: number,
-  palette: TransitionPalette,
+  effect: TransitionEffect,
   style: MixStyle,
 ): TransitionAssignment[] {
   const { segments } = plan
@@ -202,8 +146,8 @@ export function assignTransitions(
     selectedSet.add(indexed[i]!.idx)
   }
 
-  const availableTypes = PALETTE_TIERS[palette]
   const maxEnergy = Math.max(...beats.map((b) => b.energy))
+  const dur = transitionDuration(effect, style)
   const result: TransitionAssignment[] = []
 
   for (let i = 0; i < count; i++) {
@@ -219,8 +163,7 @@ export function assignTransitions(
       continue
     }
 
-    const xfadeType = pickTypeForContext(t, sections, beats, availableTypes, maxEnergy)
-    result.push({ type: xfadeType, duration: scaledDuration(xfadeType, style) })
+    result.push({ type: effect, duration: dur })
   }
 
   return result

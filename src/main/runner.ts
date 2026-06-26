@@ -83,7 +83,9 @@ async function executeJob(job: MixJob): Promise<void> {
       minSegmentDuration: job.config.minSegmentDuration,
       mixStyle: job.config.mixStyle,
       transitionDensity: job.config.transitionDensity ?? (legacyTransitions === false ? 0 : 30),
-      transitionPalette: job.config.transitionPalette ?? 'dynamic',
+      transitionEffect: job.config.transitionEffect ?? 'circleopen',
+      clipEffect: job.config.clipEffect,
+      effectChance: job.config.effectChance,
       onProgress: (stage, percent) => {
         const status = stage === 'mixing' || stage === 'encoding' ? 'mixing' : 'analyzing'
         if (status !== lastStatus) {
