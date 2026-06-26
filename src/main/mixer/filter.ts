@@ -32,12 +32,18 @@ function isXfade(t: TransitionAssignment): boolean {
   return t.type !== 'cut' && t.type !== 'flash'
 }
 
+export interface FilterComplexResult {
+  inputArgs: string[]
+  filterScript: string
+  outputArgs: string[]
+}
+
 export function buildFilterComplexArgs(
   plan: SegmentPlan,
   transitions: TransitionAssignment[],
   bgmPath: string,
   outputPath: string,
-): string[] {
+): FilterComplexResult {
   const { segments } = plan
   const bgmInputIndex = segments.length
 
@@ -110,12 +116,12 @@ export function buildFilterComplexArgs(
     }
   }
 
-  const filterComplex = filterParts.join(';\n')
+  const filterScript = filterParts.join(';\n')
 
-  return [
-    ...inputArgs,
-    '-filter_complex',
-    filterComplex,
+  return {
+    inputArgs,
+    filterScript,
+    outputArgs: [
     '-map',
     `[${prevLabel}]`,
     '-map',
@@ -136,5 +142,6 @@ export function buildFilterComplexArgs(
     '-movflags',
     '+faststart',
     outputPath,
-  ]
+  ],
+  }
 }
