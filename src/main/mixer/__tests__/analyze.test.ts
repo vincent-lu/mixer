@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { analyzeBgm, selectBeats } from '../analyze'
+import type { BeatInfo } from '@shared/types'
+import { analyzeBgm, detectSections, scoreBeats, selectBeats, selectScoredBeats } from '../analyze'
 
 vi.mock('../probe', () => ({
   probeAudioDuration: vi.fn().mockResolvedValue(120),
@@ -8,6 +9,8 @@ vi.mock('../probe', () => ({
 vi.mock('../audio', () => ({
   extractPcm: vi.fn().mockResolvedValue(new Float32Array(0)),
   detectBeats: vi.fn().mockReturnValue({ ticks: [], confidence: 0 }),
+  detectOnsets: vi.fn().mockReturnValue([]),
+  computePerBeatEnergy: vi.fn().mockReturnValue([]),
 }))
 
 function realisticTicks(count: number, interval: number, offset = 0.487619): number[] {
@@ -68,6 +71,150 @@ describe('selectBeats', () => {
     const ticks = [3.993, 7.986, 120, 130]
     const result = selectBeats(ticks, 4, 120)
     expect(result).toEqual([0, 3.993, 7.986, 120])
+  })
+})
+
+describe('detectSections', () => {
+  it('detects sections in quiet-then-loud PCM', () => {
+    const sr = 44100
+    const pcm = new Float32Array(sr * 4)
+    for (let i = 0; i < sr * 2; i++) pcm[i] = 0.1
+    for (let i = sr * 2; i < pcm.length; i++) pcm[i] = 0.9
+
+    const sections = detectSections(pcm, 4.0)
+
+    expect(sections.length).toBe(2)
+    expect(sections[0]!.energy).toBe('low')
+    expect(sections[1]!.energy).toBe('high')
+    expect(sections[0]!.start).toBe(0)
+    expect(sections[1]!.end).toBe(4.0)
+    expect(sections[0]!.end).toBeGreaterThanOrEqual(1.0)
+    expect(sections[0]!.end).toBeLessThanOrEqual(2.5)
+  })
+
+  it('returns single medium section for uniform energy', () => {
+    const sr = 44100
+    const pcm = new Float32Array(sr * 4)
+    for (let i = 0; i < pcm.length; i++) pcm[i] = 0.5
+
+    const sections = detectSections(pcm, 4.0)
+
+    expect(sections.length).toBe(1)
+    expect(sections[0]).toEqual({ start: 0, end: 4.0, energy: 'medium' })
+  })
+
+  it('merges short sections into neighbors', () => {
+    const sr = 44100
+    const pcm = new Float32Array(sr * 9)
+    for (let i = 0; i < sr * 4; i++) pcm[i] = 0.1
+    for (let i = sr * 4; i < sr * 5; i++) pcm[i] = 0.5
+    for (let i = sr * 5; i < pcm.length; i++) pcm[i] = 0.9
+
+    const sections = detectSections(pcm, 9.0)
+
+    expect(sections.length).toBe(2)
+    expect(sections[0]!.energy).toBe('low')
+    expect(sections[1]!.energy).toBe('high')
+  })
+
+  it('merges short first section forward', () => {
+    const sr = 44100
+    const pcm = new Float32Array(Math.round(sr * 5.5))
+    for (let i = 0; i < Math.round(sr * 0.5); i++) pcm[i] = 0.9
+    for (let i = Math.round(sr * 0.5); i < pcm.length; i++) pcm[i] = 0.1
+
+    const sections = detectSections(pcm, 5.5)
+
+    for (const s of sections) {
+      expect(s.end - s.start).toBeGreaterThanOrEqual(1.5)
+    }
+    expect(sections[0]!.start).toBe(0)
+  })
+
+  it('returns single medium section for empty PCM', () => {
+    const sections = detectSections(new Float32Array(0), 10.0)
+    expect(sections).toEqual([{ start: 0, end: 10.0, energy: 'medium' }])
+  })
+})
+
+describe('scoreBeats', () => {
+  it('computes composite score from onset proximity and energy', () => {
+    const ticks = [1.0, 2.0, 3.0]
+    const onsets = [1.0, 3.1]
+    const beatEnergy = [0.5, 0.2, 0.8]
+
+    const beats = scoreBeats(ticks, onsets, beatEnergy)
+
+    expect(beats.length).toBe(3)
+
+    expect(beats[0]!.time).toBe(1.0)
+    expect(beats[0]!.onsetDistance).toBeCloseTo(0, 5)
+    expect(beats[0]!.score).toBeCloseTo(0.619, 2)
+
+    expect(beats[1]!.score).toBeCloseTo(0.181, 2)
+
+    expect(beats[2]!.onsetDistance).toBeCloseTo(0.1, 5)
+    expect(beats[2]!.score).toBeCloseTo(0.738, 2)
+    expect(beats[2]!.score).toBeGreaterThan(beats[0]!.score)
+  })
+
+  it('scores zero when all energy is zero but computes real onset distance', () => {
+    const beats = scoreBeats([1.0], [1.0], [0])
+
+    expect(beats[0]!.score).toBe(0)
+    expect(beats[0]!.energy).toBe(0)
+    expect(beats[0]!.onsetDistance).toBeCloseTo(0, 5)
+  })
+
+  it('handles empty onsets with infinite distance', () => {
+    const beats = scoreBeats([1.0], [], [0.5])
+
+    expect(beats[0]!.onsetDistance).toBe(Infinity)
+    expect(beats[0]!.score).toBeCloseTo(0.35, 5)
+  })
+})
+
+describe('selectScoredBeats', () => {
+  it('prefers high-scored beat over earlier low-scored beat in window', () => {
+    const beats: BeatInfo[] = [
+      { time: 4.0, score: 0.2, energy: 0.1, onsetDistance: 1.0 },
+      { time: 4.5, score: 0.9, energy: 0.8, onsetDistance: 0.01 },
+      { time: 5.0, score: 0.3, energy: 0.2, onsetDistance: 0.5 },
+    ]
+
+    const result = selectScoredBeats(beats, 4.0, 20)
+
+    expect(result[0]).toBe(0)
+    expect(result[1]).toBe(4.5)
+  })
+
+  it('returns [0, bgmDuration] for empty beats', () => {
+    expect(selectScoredBeats([], 4.0, 120)).toEqual([0, 120])
+  })
+
+  it('enforces minimum gap between selections', () => {
+    const beats: BeatInfo[] = [
+      { time: 2.0, score: 0.9, energy: 0.8, onsetDistance: 0 },
+      { time: 4.0, score: 0.5, energy: 0.4, onsetDistance: 0.1 },
+      { time: 8.0, score: 0.7, energy: 0.6, onsetDistance: 0.05 },
+    ]
+
+    const result = selectScoredBeats(beats, 4.0, 20)
+
+    expect(result).toEqual([0, 4.0, 8.0, 20])
+  })
+
+  it('merges last segment when too close to bgmDuration', () => {
+    const beats: BeatInfo[] = [
+      { time: 4.0, score: 0.5, energy: 0.5, onsetDistance: 0.1 },
+      { time: 8.0, score: 0.5, energy: 0.5, onsetDistance: 0.1 },
+      { time: 9.5, score: 0.8, energy: 0.8, onsetDistance: 0 },
+    ]
+
+    const result = selectScoredBeats(beats, 4.0, 10)
+
+    expect(result.at(-1)).toBe(10)
+    expect(result.filter((t) => t === 10)).toHaveLength(1)
   })
 })
 

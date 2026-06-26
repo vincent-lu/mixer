@@ -100,16 +100,13 @@ Uses essentia.js (WASM) running in the main process (`src/main/mixer/audio.ts`).
 ### Implemented
 
 1. **Beat detection** (`BeatTrackerMultiFeature`) — finds beat positions and derives BPM from median inter-beat interval
-2. **Beat selection** — filters beat ticks by configurable minimum gap (default 0.5s), producing scene switch timings
-
-Falls back to fixed-interval timing if beat detection fails.
-
-### Designed (not yet implemented)
-
-3. **Onset detection** (`SuperFluxExtractor`) — returns onset event times in seconds. Detects musical events (cymbal hits, note attacks, drops) independent of the beat grid. Tested: 6 onsets on synthetic signal, 1200-1300 on real songs.
+2. **Beat selection** — filters beat ticks by configurable minimum gap (default 0.5s), producing scene switch timings. Retained as fallback when scored data is unavailable.
+3. **Onset detection** (`SuperFluxExtractor`) — returns onset event times in seconds. Detects musical events (cymbal hits, note attacks, drops) independent of the beat grid. 1200-1300 events on real songs.
 4. **Per-beat energy** (manual windowing + `RMS`) — 100ms window around each beat position, compute RMS. Gives energy level per beat. `BeatsLoudness` crashes in WASM; manual approach works and gives more control.
-5. **Energy-based sections** — RMS curve at regular intervals, classify as low/medium/high by distribution, merge consecutive same-level windows. Detects verse/chorus/bridge boundaries by energy profile.
-6. **Scored beat selection** — composite score per beat: onset proximity (is a musical event near this beat?), energy level (absolute RMS), energy delta (change from previous beat — surfaces transitions). Within a gap window, pick the highest-scored beat instead of greedy first-past-gap.
+5. **Energy-based sections** (`detectSections`) — RMS curve at 0.5s hop / 1.0s window, classify as low/medium/high by thirds of the min-max range, merge consecutive same-level windows, filter sections shorter than 1.5s. Populates `AnalysisResult.sections`.
+6. **Scored beat selection** (`scoreBeats` + `selectScoredBeats`) — composite score per beat: onset proximity ×0.4, energy level ×0.35, energy delta ×0.25. Within a [minGap, minGap+2s] window, pick the highest-scored beat instead of greedy first-past-gap. Populates `AnalysisResult.beats` and drives `sectionTimings`.
+
+Falls back to fixed-interval timing if beat detection fails. Onset/energy/section fields are absent in fallback mode.
 
 ### Planned (not yet designed in detail)
 
@@ -236,7 +233,6 @@ Test candidates (as features are built):
 ## Deferred
 
 Designed, not yet implemented:
-- Multi-layer audio analysis — onset detection, energy profiling, scored beat selection, energy-based sections (see Audio Analysis Pipeline)
 - Style-driven pacing — mix style parameter controlling cut density and energy reactivity (see Audio Analysis Pipeline)
 - Visual effects / transitions — ffmpeg xfade, transition type mapped to musical context (hard cut for beats, dissolve for section boundaries, flash frame for drops after silence)
 

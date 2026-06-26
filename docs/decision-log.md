@@ -4,6 +4,20 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-26 — Scoring pipeline implementation constants
+
+**Decision:** Specific values chosen for the scoring pipeline:
+- Composite score weights: onset proximity ×0.4, energy level ×0.35, energy delta ×0.25
+- Scored selection lookahead: 2.0s beyond `minGap` (the window in which the highest-scored beat is picked)
+- Section detection: 0.5s hop, 1.0s window, minimum section duration 1.5s
+- Energy classification: thirds of the min-max RMS range (low/medium/high)
+
+**Why:** Weights bias toward onset proximity because onset-aligned cuts feel most "musical" — they land on cymbal hits, note attacks, drops. Energy level is second (louder beats are better cut points). Energy delta catches transitions (verse→chorus entry) which produce the most visually satisfying cuts. The 2s lookahead balances being selective (don't just take the first beat past the gap) with being responsive (don't skip too far ahead). Section detection constants (1.5s minimum, 0.5s/1.0s hop/window) are empirically reasonable for pop music structure — validated on 4 test tracks.
+
+**These are starting points.** Style-driven pacing (Session C) may adjust weights dynamically. Tuning is straightforward because the scoring formula and section detection are isolated functions with clear parameters.
+
+---
+
 ## 2026-06-26 — Multi-layer audio analysis design
 
 ### Three analysis layers on top of beat detection
