@@ -1,4 +1,4 @@
-import { DEFAULT_STYLE_LOOKAHEAD } from '@shared/types'
+import { DEFAULT_STYLE_LOOKAHEAD } from '../../shared/types'
 import type { AnalysisResult, BeatInfo, MixStyle, Section } from '@shared/types'
 import { extractPcm, detectBeats, detectOnsets, computePerBeatEnergy } from './audio'
 import { probeAudioDuration } from './probe'
