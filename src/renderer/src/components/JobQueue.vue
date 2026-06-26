@@ -1,21 +1,52 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { ref, onBeforeUnmount, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useJobsStore } from '@renderer/stores/jobs'
 import { platform } from '@renderer/platform'
-import type { MixJobStatus } from '@renderer/platform'
+import type { MixJob, MixJobStatus } from '@renderer/platform'
 
 const store = useJobsStore()
 const { jobs, loading } = storeToRefs(store)
 
+const now = ref(Date.now())
+let tickTimer: ReturnType<typeof setInterval> | null = null
+
 onMounted(() => {
   void store.load()
   store.subscribe()
+  tickTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
 })
 
 onBeforeUnmount(() => {
   store.unsubscribe()
+  if (tickTimer) clearInterval(tickTimer)
 })
+
+function formatDuration(ms: number): string {
+  const totalSecs = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(totalSecs / 3600)
+  const m = Math.floor((totalSecs % 3600) / 60)
+  const s = totalSecs % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function elapsed(job: MixJob): string {
+  if (!job.startedAt) return ''
+  const end = job.completedAt ?? now.value
+  return formatDuration(end - job.startedAt)
+}
+
+function eta(job: MixJob): string {
+  if (!isActive(job.status) || !job.startedAt || job.progress < 5) return ''
+  const elapsedMs = now.value - job.startedAt
+  const totalEstMs = elapsedMs * (100 / job.progress)
+  const remainingMs = totalEstMs - elapsedMs
+  if (remainingMs <= 0) return ''
+  return `~${formatDuration(remainingMs)} left`
+}
 
 function statusLabel(status: MixJobStatus): string {
   switch (status) {
@@ -87,6 +118,15 @@ function showOutput(path: string): void {
             <div class="progress-fill" :style="{ width: `${job.progress}%` }" />
           </div>
           <span class="progress-text">{{ job.progress }}%</span>
+        </div>
+
+        <div v-if="isActive(job.status) && job.startedAt" class="time-info">
+          <span>{{ elapsed(job) }}</span>
+          <span v-if="eta(job)">{{ eta(job) }}</span>
+        </div>
+
+        <div v-if="!isActive(job.status) && job.startedAt && job.completedAt" class="time-info">
+          <span>{{ elapsed(job) }}</span>
         </div>
 
         <div v-if="job.status === 'failed' && job.error" class="error-text">
@@ -236,6 +276,13 @@ function showOutput(path: string): void {
   color: #9ca3af;
   min-width: 36px;
   text-align: right;
+}
+
+.time-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #6b7280;
 }
 
 .error-text {
