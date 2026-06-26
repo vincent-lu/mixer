@@ -1,24 +1,26 @@
 ---
 name: project-audio-analysis-design
-description: Designed multi-layer audio analysis — onsets, energy, sections, scored beats, style-driven pacing. Tested on real songs. Not yet implemented.
+description: Multi-layer audio analysis — Session A done (types, detectOnsets, computePerBeatEnergy). Sessions B–D remaining (scoring, style pacing, transitions).
 metadata:
   type: project
 ---
 
 Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-analysis]] (beat detection, implemented).
 
-**Current state:** Designed and tested via prototype scripts. Not yet integrated into the pipeline. All algorithms verified on 4 test tracks (click_120bpm, Girls' Day K-pop, Phut Hon EDM remix, Nebulossa Spanish pop).
+**Current state:** Session A complete — foundation types and detection functions implemented. Not yet wired into the pipeline (Sessions B–D). All algorithms verified on 4 test tracks (click_120bpm, Girls' Day K-pop, Phut Hon EDM remix, Nebulossa Spanish pop).
 
-**Three new analysis layers:**
-1. **Onset detection** — `SuperFluxExtractor(signal)` → onset times in seconds. 1200-1300 events on real songs.
-2. **Per-beat energy** — manual 100ms windowing + `e.RMS(frame)`. `BeatsLoudness` crashes in WASM; manual approach works.
-3. **Energy sections** — RMS curve at 0.5s intervals → low/medium/high classification → merged sections. Correctly finds verse/chorus/bridge by energy.
+**Session A (done):** Types (`BeatInfo`, `Section`, `MixStyle` union) + optional fields on `AnalysisResult`/`MixJobConfig` in `types.ts`. `detectOnsets()` and `computePerBeatEnergy()` in `audio.ts` with tests. Empty-frame guard on energy function. Onset test verifies seconds unit (upper-bound check).
 
-**Scored beat selection:** Composite score per beat (onset proximity 0.4, energy 0.35, energy delta 0.25). Within gap window, pick highest-scored beat. Tested: consistently shifts cuts to section transitions and drop entries.
+**Three analysis layers:**
+1. **Onset detection** — `detectOnsets()` implemented in `audio.ts`. `SuperFluxExtractor(signal)` → onset times in seconds. 1200-1300 events on real songs.
+2. **Per-beat energy** — `computePerBeatEnergy()` implemented in `audio.ts`. Manual 100ms windowing + `e.RMS(frame)`. `BeatsLoudness` crashes in WASM; manual approach works.
+3. **Energy sections** — not yet implemented. RMS curve at 0.5s intervals → low/medium/high classification → merged sections.
 
-**Style-driven pacing:** Mix style parameter in `MixJobConfig` (part of preset system). Spectrum from near-playthrough to hyperkinetic. Energy sections modulate base pacing per style.
+**Scored beat selection:** Not yet implemented. Composite score per beat (onset proximity 0.4, energy 0.35, energy delta 0.25). Within gap window, pick highest-scored beat.
 
-**Transition types:** Hard cut (normal beats), dissolve (section boundaries), flash frame (drops after silence). Via ffmpeg xfade. Style also influences transition mix.
+**Style-driven pacing:** `MixStyle` type defined ('chill' | 'relaxed' | 'balanced' | 'energetic' | 'hyperkinetic'). Optional on `MixJobConfig`. Pacing logic not yet implemented.
+
+**Transition types:** Not yet implemented. Hard cut (normal beats), dissolve (section boundaries), flash frame (drops after silence). Via ffmpeg xfade.
 
 **Priority tiers:**
 - Tier 1: Scored beat selection, style-driven pacing, transition types
@@ -31,4 +33,9 @@ Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-an
 
 **Why:** "Cuts that feel like a music video" — beat-synced cutting is the core value proposition. Scored selection + style pacing is the smallest change for the biggest quality jump.
 
-**How to apply:** Implementation sprint targets `audio.ts` (new detection functions), `analyze.ts` (scoring + style-aware selection), `types.ts` (AnalysisResult extension). Details in `docs/design.md` Audio Analysis Pipeline section.
+**Remaining sessions:**
+- **Session B:** Scoring pipeline — energy sections, composite beat scoring, wire into `analyzeBgm`, validate on test MP3s. Update `design.md` items 3-5 to "Implemented" when wired in.
+- **Session C:** Style-driven pacing — `MixStyle` controls cut density and energy reactivity
+- **Session D:** Transition types — ffmpeg xfade mapped to musical context
+
+**How to apply:** Foundation in `audio.ts` (detection functions) and `types.ts` (types). Next work targets `analyze.ts` (scoring + style-aware selection). Details in `docs/design.md` Audio Analysis Pipeline section.
