@@ -34,4 +34,6 @@ Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-an
 - Dissolve outgoing segments extended by 0.4s for overlap content; net output duration matches BGM exactly
 - Validation: Girls' Day track → 84 segments (75 cuts, 7 dissolves, 1 flash), 193.19s output matching BGM; click track → all cuts, concat path
 
+**Post-sprint UI wiring (done):** Mix Style dropdown (5 styles with inline hints), Transitions checkbox (`enableTransitions` on `MixJobConfig`), Min Segment Duration removed from UI (was overriding style pacing with fixed 0.5s). CLI retains `--min-segment` and `--no-transitions`. BGM file picker accepts video files. Output dir persisted. Default concurrency 3→1.
+
 **How to apply:** Detection in `audio.ts`, scoring + selection in `analyze.ts`, transitions in `transitions.ts`, filter construction in `filter.ts`, types in `types.ts` + `types.ts` (mixer). Details in `docs/design.md` Audio Analysis Pipeline and Mixing Pipeline sections.

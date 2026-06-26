@@ -12,6 +12,7 @@ interface CliArgs {
   segmentDuration?: number
   minSegment?: number
   style?: MixStyle
+  noTransitions: boolean
 }
 
 function parseArgs(): CliArgs {
@@ -21,6 +22,7 @@ function parseArgs(): CliArgs {
   let segmentDuration: number | undefined
   let minSegment: number | undefined
   let style: MixStyle | undefined
+  let noTransitions = false
   const videos: string[] = []
 
   for (let i = 0; i < argv.length; i++) {
@@ -67,6 +69,9 @@ function parseArgs(): CliArgs {
         style = val as MixStyle
         break
       }
+      case '--no-transitions':
+        noTransitions = true
+        break
       default:
         console.error(`Unknown flag: ${argv[i]}`)
         process.exit(1)
@@ -75,7 +80,7 @@ function parseArgs(): CliArgs {
 
   if (!bgm || videos.length === 0 || !output) {
     console.error(
-      'Usage: pnpm mix --bgm <path> --videos <path1> [path2...] --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>]',
+      'Usage: pnpm mix --bgm <path> --videos <path1> [path2...] --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--no-transitions]',
     )
     process.exit(1)
   }
@@ -89,7 +94,7 @@ function parseArgs(): CliArgs {
     console.warn('Warning: --min-segment overrides --style. Style-driven pacing will not be used.')
   }
 
-  return { bgm, videos, output, segmentDuration, minSegment, style }
+  return { bgm, videos, output, segmentDuration, minSegment, style, noTransitions }
 }
 
 async function main(): Promise<void> {
@@ -107,6 +112,7 @@ async function main(): Promise<void> {
     console.log(`Min gap:  ${args.minSegment ?? 'style-driven'}`)
   }
   console.log(`Style:    ${args.style ?? 'balanced'}`)
+  console.log(`Transitions: ${args.noTransitions ? 'off' : 'on'}`)
   console.log()
 
   const ac = new AbortController()
@@ -122,6 +128,7 @@ async function main(): Promise<void> {
     segmentDuration: args.segmentDuration,
     minSegmentDuration: args.minSegment,
     mixStyle: args.style,
+    enableTransitions: !args.noTransitions,
     signal: ac.signal,
     onProgress: (stage, percent) => {
       process.stdout.write(`\r[${stage}] ${String(percent).padStart(3)}%`)

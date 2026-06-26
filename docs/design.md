@@ -153,14 +153,14 @@ probe → normalize → analyze → plan segments → assign transitions → enc
 - **Concat demuxer** (fast path): when all transitions are hard cuts. `inpoint`/`outpoint` per segment, single ffmpeg command, no temp files.
 - **filter_complex** (transition path): when dissolves or flash frames are assigned. One `-i` per segment with `-ss` seeking, `trim`+`setpts`+`settb=AVTB` per segment, grouped `concat` for consecutive hard cuts, `xfade` for dissolves, `fade`+`concat` for flash frames. Single ffmpeg command, single encoding pass.
 
-Transition assignment is automatic — derived from `AnalysisResult.sections` and `.beats`. No user config needed. Graceful degradation: absent analysis data → all cuts → concat demuxer path.
+Transition assignment is automatic — derived from `AnalysisResult.sections` and `.beats`. User can disable via `enableTransitions: false` on `MixJobConfig` (UI checkbox or `--no-transitions` CLI flag), which skips `assignTransitions()` and forces the concat demuxer fast path. Graceful degradation: absent analysis data → all cuts → concat demuxer path.
 
 **Transitions:**
 - **Hard cut** (default) — most segment boundaries
 - **Dissolve** (0.4s `xfade=transition=fade`) — segment boundary coinciding with a section energy change (e.g., verse→chorus)
 - **Flash frame** (0.12s `fade=color=white`) — segment boundary at a high energy delta beat after a low-energy section (drop effect)
 
-**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>]`
+**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--no-transitions]`
 
 ## Job Runner
 

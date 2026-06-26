@@ -81,6 +81,7 @@ async function executeJob(job: MixJob): Promise<void> {
       outputPath,
       minSegmentDuration: job.config.minSegmentDuration,
       mixStyle: job.config.mixStyle,
+      enableTransitions: job.config.enableTransitions,
       onProgress: (stage, percent) => {
         const status = stage === 'mixing' || stage === 'encoding' ? 'mixing' : 'analyzing'
         if (status !== lastStatus) {

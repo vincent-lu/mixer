@@ -13,9 +13,18 @@ const outputDir = ref('')
 const outputFormat = ref<MixJobConfig['outputFormat']>('mp4')
 const videoResolution = ref<MixJobConfig['videoResolution']>('1080p')
 const sceneDetection = ref<MixJobConfig['sceneDetection']>('random')
-const minSegmentDuration = ref(0.5)
+const mixStyle = ref<NonNullable<MixJobConfig['mixStyle']>>('balanced')
+const enableTransitions = ref(true)
 const outputFilename = ref('')
 const maxConcurrency = ref(1)
+
+const styleHints: Record<NonNullable<MixJobConfig['mixStyle']>, string> = {
+  chill: 'Long, lingering shots (5–12s)',
+  relaxed: 'Gentle pacing (3.5–9s)',
+  balanced: 'Follows the music (1.5–5s)',
+  energetic: 'Fast, energy-reactive (0.75–3s)',
+  hyperkinetic: 'Rapid-fire, sub-second drops (0.35–1.5s)',
+}
 
 const canStart = ref(true)
 
@@ -80,7 +89,8 @@ async function startMix(): Promise<void> {
       outputFormat: outputFormat.value,
       sceneDetection: sceneDetection.value,
       videoResolution: videoResolution.value,
-      minSegmentDuration: minSegmentDuration.value,
+      mixStyle: mixStyle.value,
+      enableTransitions: enableTransitions.value,
       outputFilename: outputFilename.value || undefined,
     }
     const name = `Mix — ${outputFilename.value || fileName(bgmPath.value)}`
@@ -164,18 +174,22 @@ async function startMix(): Promise<void> {
         </select>
       </FormRow>
 
-      <FormRow label="Min Segment Duration">
-        <div class="number-input">
-          <input
-            v-model.number="minSegmentDuration"
-            type="number"
-            class="input"
-            min="0.2"
-            max="60"
-            step="0.1"
-          />
-          <span class="input-suffix">seconds</span>
-        </div>
+      <FormRow label="Mix Style">
+        <select v-model="mixStyle" class="select" title="Controls how frequently scene cuts happen and how they react to musical energy">
+          <option value="chill" title="Long, lingering shots. Cuts every 5–12s depending on energy.">Chill</option>
+          <option value="relaxed" title="Gentle pacing. Cuts every 3.5–9s depending on energy.">Relaxed</option>
+          <option value="balanced" title="Moderate pacing that follows the music. Cuts every 1.5–5s depending on energy.">Balanced</option>
+          <option value="energetic" title="Fast cuts that react strongly to energy. Cuts every 0.75–3s depending on energy.">Energetic</option>
+          <option value="hyperkinetic" title="Rapid-fire cuts, sub-second during drops. Cuts every 0.35–1.5s depending on energy.">Hyperkinetic</option>
+        </select>
+        <span class="style-hint">{{ styleHints[mixStyle] }}</span>
+      </FormRow>
+
+      <FormRow label="Transitions">
+        <label class="toggle-label" title="Add dissolves at section boundaries and flash frames at energy drops. Disabling uses hard cuts only (faster encoding).">
+          <input v-model="enableTransitions" type="checkbox" class="toggle-checkbox" />
+          <span>{{ enableTransitions ? 'Dissolves & flashes at musical boundaries' : 'Hard cuts only (faster)' }}</span>
+        </label>
       </FormRow>
 
       <FormRow label="Max Concurrent Jobs">
@@ -316,9 +330,22 @@ async function startMix(): Promise<void> {
   gap: 8px;
 }
 
-.input-suffix {
+.style-hint {
   font-size: 13px;
   color: #9ca3af;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #d1d5db;
+  cursor: pointer;
+}
+
+.toggle-checkbox {
+  accent-color: #2563eb;
 }
 
 .start-btn {

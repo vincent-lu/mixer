@@ -33,6 +33,7 @@ export interface MixJobConfig {
   minSegmentDuration?: number
   outputFilename?: string
   mixStyle?: MixStyle
+  enableTransitions?: boolean
 }
 
 export interface AnalysisResult {

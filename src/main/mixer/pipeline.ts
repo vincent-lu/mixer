@@ -16,6 +16,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
     segmentDuration,
     minSegmentDuration,
     mixStyle,
+    enableTransitions = true,
     onProgress,
     signal,
   } = options
@@ -52,7 +53,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
   signal?.throwIfAborted()
 
   // Assign transitions based on musical context
-  const transitions = assignTransitions(plan, analysis)
+  const transitions = enableTransitions ? assignTransitions(plan, analysis) : []
   const hasTransitions = transitions.some((t) => t !== 'cut')
 
   if (hasTransitions) {

@@ -32,6 +32,7 @@ export interface PipelineOptions {
   segmentDuration?: number
   minSegmentDuration?: number
   mixStyle?: MixStyle
+  enableTransitions?: boolean
   onProgress?: OnProgress
   signal?: AbortSignal
 }

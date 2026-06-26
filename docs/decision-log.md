@@ -4,6 +4,14 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-26 — UI controls for mix style and transitions
+
+**Decision:** Add Mix Style dropdown and Transitions toggle to the Electron UI. Remove Min Segment Duration from UI — it was always overriding style-driven pacing (set to 0.5s on every job, causing `analyzeBgm` to bypass `selectScoredBeatsBySection`). Min Segment Duration remains available via CLI `--min-segment` as a power-user override. `enableTransitions` boolean added to `MixJobConfig` (default `true`); when `false`, skips `assignTransitions()` and forces concat demuxer fast path.
+
+**Why:** The 4-session audio analysis sprint added style-driven pacing and transitions, but the UI had no controls for either. Mix Style dropdown was cosmetic because the always-present `minSegmentDuration` overrode it. Transitions toggle gives users a simple on/off — faster encoding and cleaner cuts when transitions aren't wanted.
+
+---
+
 ## 2026-06-26 — Transition types (Session D)
 
 **Decision:** Full filter_complex approach for video transitions, with concat demuxer preserved as fast path.
