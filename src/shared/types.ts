@@ -8,6 +8,21 @@ export type OutputFormat = 'mp4' | 'mkv' | 'mov'
 
 export type VideoResolution = '1080p' | '720p' | '480p' | 'source'
 
+export type MixStyle = 'chill' | 'relaxed' | 'balanced' | 'energetic' | 'hyperkinetic'
+
+export interface BeatInfo {
+  time: number
+  score: number
+  energy: number
+  onsetDistance: number
+}
+
+export interface Section {
+  start: number
+  end: number
+  energy: 'low' | 'medium' | 'high'
+}
+
 export interface MixJobConfig {
   bgmPath: string
   sourceVideoPaths: string[]
@@ -17,6 +32,7 @@ export interface MixJobConfig {
   videoResolution: VideoResolution
   minSegmentDuration?: number
   outputFilename?: string
+  mixStyle?: MixStyle
 }
 
 export interface AnalysisResult {
@@ -24,6 +40,9 @@ export interface AnalysisResult {
   sectionTimings: number[]
   bgmDuration: number
   sceneCount: number
+  beats?: BeatInfo[]
+  onsets?: number[]
+  sections?: Section[]
 }
 
 export interface MixJob {
