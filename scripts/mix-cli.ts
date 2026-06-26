@@ -1,6 +1,9 @@
 #!/usr/bin/env tsx
 
+import type { MixStyle } from '../src/shared/types'
 import { runMixPipeline } from '../src/main/mixer/pipeline'
+
+const VALID_STYLES: MixStyle[] = ['chill', 'relaxed', 'balanced', 'energetic', 'hyperkinetic']
 
 interface CliArgs {
   bgm: string
@@ -8,6 +11,7 @@ interface CliArgs {
   output: string
   segmentDuration?: number
   minSegment?: number
+  style?: MixStyle
 }
 
 function parseArgs(): CliArgs {
@@ -16,6 +20,7 @@ function parseArgs(): CliArgs {
   let output = ''
   let segmentDuration: number | undefined
   let minSegment: number | undefined
+  let style: MixStyle | undefined
   const videos: string[] = []
 
   for (let i = 0; i < argv.length; i++) {
@@ -53,6 +58,15 @@ function parseArgs(): CliArgs {
         minSegment = val
         break
       }
+      case '--style': {
+        const val = argv[++i] ?? ''
+        if (!VALID_STYLES.includes(val as MixStyle)) {
+          console.error(`--style must be one of: ${VALID_STYLES.join(', ')}`)
+          process.exit(1)
+        }
+        style = val as MixStyle
+        break
+      }
       default:
         console.error(`Unknown flag: ${argv[i]}`)
         process.exit(1)
@@ -61,7 +75,7 @@ function parseArgs(): CliArgs {
 
   if (!bgm || videos.length === 0 || !output) {
     console.error(
-      'Usage: pnpm mix --bgm <path> --videos <path1> [path2...] --output <path> [--segment-duration <s> | --min-segment <s>]',
+      'Usage: pnpm mix --bgm <path> --videos <path1> [path2...] --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>]',
     )
     process.exit(1)
   }
@@ -71,7 +85,11 @@ function parseArgs(): CliArgs {
     process.exit(1)
   }
 
-  return { bgm, videos, output, segmentDuration, minSegment }
+  if (minSegment !== undefined && style !== undefined) {
+    console.warn('Warning: --min-segment overrides --style. Style-driven pacing will not be used.')
+  }
+
+  return { bgm, videos, output, segmentDuration, minSegment, style }
 }
 
 async function main(): Promise<void> {
@@ -86,8 +104,9 @@ async function main(): Promise<void> {
   if (args.segmentDuration !== undefined) {
     console.log(`Segment:  ${args.segmentDuration}s (fixed)`)
   } else {
-    console.log(`Min gap:  ${args.minSegment ?? 0.5}s`)
+    console.log(`Min gap:  ${args.minSegment ?? 'style-driven'}`)
   }
+  console.log(`Style:    ${args.style ?? 'balanced'}`)
   console.log()
 
   const ac = new AbortController()
@@ -102,6 +121,7 @@ async function main(): Promise<void> {
     outputPath: args.output,
     segmentDuration: args.segmentDuration,
     minSegmentDuration: args.minSegment,
+    mixStyle: args.style,
     signal: ac.signal,
     onProgress: (stage, percent) => {
       process.stdout.write(`\r[${stage}] ${String(percent).padStart(3)}%`)

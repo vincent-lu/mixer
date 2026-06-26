@@ -13,6 +13,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
   const {
     segmentDuration,
     minSegmentDuration,
+    mixStyle,
     onProgress,
     signal,
   } = options
@@ -39,7 +40,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
   signal?.throwIfAborted()
 
   // Analyze BGM for cut points (also probes BGM duration internally)
-  const analysis = await analyzeBgm(bgmPath, { segmentDuration, minSegmentDuration })
+  const analysis = await analyzeBgm(bgmPath, { segmentDuration, minSegmentDuration, mixStyle })
 
   onProgress?.('analyzing', 100)
 

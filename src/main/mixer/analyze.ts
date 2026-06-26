@@ -1,4 +1,4 @@
-import type { AnalysisResult, BeatInfo, Section } from '@shared/types'
+import type { AnalysisResult, BeatInfo, MixStyle, Section } from '@shared/types'
 import { extractPcm, detectBeats, detectOnsets, computePerBeatEnergy } from './audio'
 import { probeAudioDuration } from './probe'
 
@@ -7,6 +7,7 @@ export const DEFAULT_SEGMENT_DURATION = 0.5
 export interface AnalyzeOptions {
   segmentDuration?: number
   minSegmentDuration?: number
+  mixStyle?: MixStyle
 }
 
 const BEAT_TOLERANCE = 0.02
@@ -14,7 +15,18 @@ const SAMPLE_RATE = 44100
 const SECTION_HOP = 0.5
 const SECTION_WINDOW = 1.0
 const MIN_SECTION_DURATION = 1.5
+const MIN_RMS_RANGE = 0.01
 const SCORED_LOOKAHEAD = 2.0
+const MIN_LOOKAHEAD = 0.5
+const LOOKAHEAD_RATIO = 0.4
+
+const MIN_GAP_TABLE: Record<MixStyle, Record<Section['energy'], number>> = {
+  chill: { low: 12.0, medium: 8.0, high: 5.0 },
+  relaxed: { low: 9.0, medium: 5.0, high: 3.5 },
+  balanced: { low: 5.0, medium: 3.0, high: 1.5 },
+  energetic: { low: 3.0, medium: 1.5, high: 0.75 },
+  hyperkinetic: { low: 1.5, medium: 0.75, high: 0.35 },
+}
 
 export function selectBeats(ticks: number[], minDuration: number, bgmDuration: number): number[] {
   const threshold = minDuration - BEAT_TOLERANCE
@@ -59,7 +71,7 @@ export function detectSections(pcm: Float32Array, bgmDuration: number): Section[
   const maxRms = Math.max(...rmsValues)
   const range = maxRms - minRms
 
-  if (range === 0) return [{ start: 0, end: bgmDuration, energy: 'medium' }]
+  if (range < MIN_RMS_RANGE) return [{ start: 0, end: bgmDuration, energy: 'medium' }]
 
   const lowThreshold = minRms + range / 3
   const highThreshold = minRms + (2 * range) / 3
@@ -99,7 +111,17 @@ export function detectSections(pcm: Float32Array, bgmDuration: number): Section[
     merged.shift()
   }
 
-  return merged
+  const consolidated: Section[] = [{ ...merged[0]! }]
+  for (let i = 1; i < merged.length; i++) {
+    const prev = consolidated[consolidated.length - 1]!
+    if (merged[i]!.energy === prev.energy) {
+      prev.end = merged[i]!.end
+    } else {
+      consolidated.push({ ...merged[i]! })
+    }
+  }
+
+  return consolidated
 }
 
 function nearestDistance(target: number, sorted: number[]): number {
@@ -176,6 +198,71 @@ export function selectScoredBeats(beats: BeatInfo[], minGap: number, bgmDuration
   return timings
 }
 
+export function resolveMinGap(style: MixStyle, energy: Section['energy']): number {
+  return MIN_GAP_TABLE[style][energy]
+}
+
+function findSection(sections: Section[], time: number): Section {
+  for (let i = sections.length - 1; i >= 0; i--) {
+    if (sections[i]!.start <= time) return sections[i]!
+  }
+  return sections[0]!
+}
+
+export function selectScoredBeatsBySection(
+  beats: BeatInfo[],
+  sections: Section[],
+  style: MixStyle,
+  bgmDuration: number,
+): number[] {
+  const timings: number[] = [0]
+  let idx = 0
+
+  while (idx < beats.length) {
+    const lastSwitch = timings[timings.length - 1]!
+
+    while (idx < beats.length && beats[idx]!.time < bgmDuration) {
+      const section = findSection(sections, beats[idx]!.time)
+      const minGap = resolveMinGap(style, section.energy)
+      if (beats[idx]!.time - lastSwitch >= minGap - BEAT_TOLERANCE) break
+      idx++
+    }
+
+    if (idx >= beats.length || beats[idx]!.time >= bgmDuration) break
+
+    const firstSection = findSection(sections, beats[idx]!.time)
+    const firstMinGap = resolveMinGap(style, firstSection.energy)
+    const lookahead = Math.max(MIN_LOOKAHEAD, firstMinGap * LOOKAHEAD_RATIO)
+    const windowEnd = beats[idx]!.time + lookahead
+
+    let bestIdx = idx
+    for (
+      let i = idx + 1;
+      i < beats.length && beats[i]!.time <= windowEnd && beats[i]!.time < bgmDuration;
+      i++
+    ) {
+      const s = findSection(sections, beats[i]!.time)
+      const gap = resolveMinGap(style, s.energy)
+      if (beats[i]!.time - lastSwitch < gap - BEAT_TOLERANCE) continue
+      if (beats[i]!.score > beats[bestIdx]!.score) bestIdx = i
+    }
+
+    timings.push(beats[bestIdx]!.time)
+    idx = bestIdx + 1
+  }
+
+  const last = timings[timings.length - 1]!
+  const lastSection = findSection(sections, last)
+  const lastMinGap = resolveMinGap(style, lastSection.energy)
+  if (bgmDuration - last < lastMinGap - BEAT_TOLERANCE && timings.length > 1) {
+    timings[timings.length - 1] = bgmDuration
+  } else {
+    timings.push(bgmDuration)
+  }
+
+  return timings
+}
+
 function bpmFromTicks(ticks: number[]): number {
   if (ticks.length < 2) return 0
   const intervals = ticks.slice(1).map((t, i) => t - ticks[i]!)
@@ -211,7 +298,8 @@ export async function analyzeBgm(
     }
   }
 
-  const minGap = options.minSegmentDuration ?? DEFAULT_SEGMENT_DURATION
+  const explicitMinGap = options.minSegmentDuration
+  const style = options.mixStyle ?? 'balanced'
 
   try {
     const pcm = await extractPcm(bgmPath)
@@ -222,7 +310,11 @@ export async function analyzeBgm(
     const beatEnergy = computePerBeatEnergy(pcm, ticks)
     const beats = scoreBeats(ticks, onsets, beatEnergy)
     const sections = detectSections(pcm, bgmDuration)
-    const sectionTimings = selectScoredBeats(beats, minGap, bgmDuration)
+
+    const sectionTimings =
+      explicitMinGap !== undefined
+        ? selectScoredBeats(beats, explicitMinGap, bgmDuration)
+        : selectScoredBeatsBySection(beats, sections, style, bgmDuration)
 
     return {
       bpm,
@@ -235,7 +327,8 @@ export async function analyzeBgm(
     }
   } catch (err) {
     console.warn('[analyze] beat detection failed, falling back to fixed-interval:', err)
-    const sectionTimings = fixedIntervalTimings(bgmDuration, minGap)
+    const fallbackGap = explicitMinGap ?? DEFAULT_SEGMENT_DURATION
+    const sectionTimings = fixedIntervalTimings(bgmDuration, fallbackGap)
     return {
       bpm: 0,
       sectionTimings,

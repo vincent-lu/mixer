@@ -1,4 +1,4 @@
-import type { ProgressStage } from '@shared/types'
+import type { MixStyle, ProgressStage } from '@shared/types'
 
 export interface ProbeResult {
   path: string
@@ -29,6 +29,7 @@ export interface PipelineOptions {
   outputPath: string
   segmentDuration?: number
   minSegmentDuration?: number
+  mixStyle?: MixStyle
   onProgress?: OnProgress
   signal?: AbortSignal
 }

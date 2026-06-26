@@ -80,6 +80,7 @@ async function executeJob(job: MixJob): Promise<void> {
       sourceVideoPaths: job.config.sourceVideoPaths,
       outputPath,
       minSegmentDuration: job.config.minSegmentDuration,
+      mixStyle: job.config.mixStyle,
       onProgress: (stage, percent) => {
         const status = stage === 'mixing' || stage === 'encoding' ? 'mixing' : 'analyzing'
         if (status !== lastStatus) {
