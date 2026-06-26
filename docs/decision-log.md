@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-26 — Transition density/palette system
+
+**Decision:** Replace the boolean `enableTransitions` toggle with a density (0–100%) + palette (subtle/dynamic/cinematic/aggressive) system. Transitions are assigned via worthiness scoring: section boundaries with energy changes score highest (1.0), high-scoring beats next (0.6), regular beats lowest (0.2). Top N% by density get transitions; the rest are hard cuts. Palette controls which xfade effects are available (cumulative tiers). Per-type durations scale with MixStyle.
+
+**Why:** The previous system assigned transitions at ~10% of switch points (only near section boundaries), used only two effects (0.4s dissolve + 0.06s flash), and had a binary on/off. Users had no control over transition frequency or visual character. The new system gives meaningful creative control while keeping the concat demuxer fast path at density 0.
+
+**Backward compat:** Old DB jobs with `enableTransitions: true` → density 30 + 'dynamic'; `enableTransitions: false` → density 0. Handled via legacy field cast in `runner.ts`.
+
+**Flash frames** kept as special case for extreme energy spikes (not palette-driven, fixed 0.06s per fade, 0.12s total). Section boundary tolerance widened from 0.5s to 1.0s for ~80% coverage.
+
+---
+
 ## 2026-06-26 — UI controls for mix style and transitions
 
 **Decision:** Add Mix Style dropdown and Transitions toggle to the Electron UI. Remove Min Segment Duration from UI — it was always overriding style-driven pacing (set to 0.5s on every job, causing `analyzeBgm` to bypass `selectScoredBeatsBySection`). Min Segment Duration remains available via CLI `--min-segment` as a power-user override. `enableTransitions` boolean added to `MixJobConfig` (default `true`); when `false`, skips `assignTransitions()` and forces concat demuxer fast path.

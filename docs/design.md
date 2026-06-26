@@ -143,7 +143,7 @@ probe → normalize → analyze → plan segments → assign transitions → enc
 | `audio.ts` | PCM extraction (ffmpeg) + essentia.js beat detection |
 | `analyze.ts` | BGM timing analysis (beat detection default, fixed-interval fallback) |
 | `segments.ts` | Shuffled round-robin segment assignment with cursor tracking |
-| `transitions.ts` | Map musical context to transition types (cut/dissolve/flash) |
+| `transitions.ts` | Worthiness-based transition assignment with palette/density control |
 | `concat.ts` | Concat demuxer file builder + ffmpeg arg construction (hard cuts only) |
 | `filter.ts` | filter_complex arg builder for mixes with transitions |
 | `encode.ts` | Spawn ffmpeg, parse progress from stderr, abort support |
@@ -151,16 +151,30 @@ probe → normalize → analyze → plan segments → assign transitions → enc
 
 **Dual-path ffmpeg strategy:**
 - **Concat demuxer** (fast path): when all transitions are hard cuts. `inpoint`/`outpoint` per segment, single ffmpeg command, no temp files.
-- **filter_complex** (transition path): when dissolves or flash frames are assigned. One `-i` per segment with `-ss` seeking, `trim`+`setpts`+`settb=AVTB` per segment, grouped `concat` for consecutive hard cuts, `xfade` for dissolves, `fade`+`concat` for flash frames. Single ffmpeg command, single encoding pass.
+- **filter_complex** (transition path): when any non-cut transitions are assigned. One `-i` per segment with `-ss` seeking, `trim`+`setpts`+`settb=AVTB` per segment, grouped `concat` for consecutive hard cuts, `xfade` with variable type/duration for palette transitions, `fade`+`concat` for flash frames. Single ffmpeg command, single encoding pass.
 
-Transition assignment is automatic — derived from `AnalysisResult.sections` and `.beats`. User can disable via `enableTransitions: false` on `MixJobConfig` (UI checkbox or `--no-transitions` CLI flag), which skips `assignTransitions()` and forces the concat demuxer fast path. Graceful degradation: absent analysis data → all cuts → concat demuxer path.
+Transition assignment uses a **density + palette** system. `transitionDensity` (0–100, default 30) controls what percentage of switch points get transitions. `transitionPalette` ('subtle' | 'dynamic' | 'cinematic' | 'aggressive', default 'dynamic') controls which visual effects are available. Density 0 skips `assignTransitions()` entirely and forces the concat demuxer fast path. Graceful degradation: absent analysis data → all cuts → concat demuxer path.
 
-**Transitions:**
-- **Hard cut** (default) — most segment boundaries
-- **Dissolve** (0.4s `xfade=transition=fade`) — segment boundary coinciding with a section energy change (e.g., verse→chorus)
-- **Flash frame** (0.12s `fade=color=white`) — segment boundary at a high energy delta beat after a low-energy section (drop effect)
+**Worthiness-based assignment:**
+1. Score every switch point: section boundary with energy change → 1.0, top-quartile beat score → 0.6, regular beat → 0.2
+2. Sort by worthiness, take top N% based on `transitionDensity`
+3. For each selected: extreme energy delta → flash frame, otherwise → xfade type from palette based on musical context (low energy → subtle types, section boundary → directional/dramatic, high energy → geometric/aggressive)
+4. Remaining switches → hard cut
 
-**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--no-transitions]`
+**Palettes** (cumulative — each tier includes all types from tiers above):
+
+| Palette | Adds | Character |
+|---------|------|-----------|
+| subtle | fade, dissolve, fadeblack, fadewhite, fadeslow | Clean, professional |
+| dynamic | + wipe/slide/smooth/cover/reveal left/right | Directional energy |
+| cinematic | + circleopen/close, radial, zoomin, vert/horzopen/close | Dramatic reveals |
+| aggressive | + pixelize, hblur, hlwind/hrwind, diag*, squeeze*, hlslice/hrslice | Glitch/EDM aesthetic |
+
+**Per-type durations** scaled by `MixStyle`: fast geometric (0.4–0.5s base), medium reveals (0.6–0.8s), slow blends (0.8–1.2s). Scale factors: chill ×1.5, relaxed ×1.2, balanced ×1.0, energetic ×0.7, hyperkinetic ×0.5.
+
+**Flash frames** remain as a special case (two 0.06s fades = 0.12s total, `fade=color=white`) for extreme energy spikes — not palette-driven, fixed duration.
+
+**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--transition-density 0-100] [--transition-palette <name>] [--no-transitions]`
 
 ## Job Runner
 

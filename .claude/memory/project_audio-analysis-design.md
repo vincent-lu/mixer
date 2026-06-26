@@ -26,14 +26,18 @@ Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-an
 - Wired through `PipelineOptions`, `runner.ts`, CLI `--style` flag
 - Validation: chill ~12-30 segments, hyperkinetic ~96-249 for 2-3 min songs
 
-**Session D (done):** Transition types — ffmpeg xfade mapped to musical context:
-- `assignTransitions(plan, analysis)` in `transitions.ts` — maps section boundaries and beat energy to `TransitionType` ('cut' | 'dissolve' | 'flash')
-- `buildFilterComplexArgs(plan, transitions, bgmPath, outputPath)` in `filter.ts` — builds filter_complex with grouped concat, xfade for dissolves, fade+concat for flash frames
-- Dual-path in `pipeline.ts`: all cuts → concat demuxer (fast path), any transitions → filter_complex (single-pass encoding)
-- `settb=AVTB` on each trimmed segment prevents xfade timebase mismatch
-- Dissolve outgoing segments extended by 0.4s for overlap content; net output duration matches BGM exactly
-- Validation: Girls' Day track → 84 segments (75 cuts, 7 dissolves, 1 flash), 193.19s output matching BGM; click track → all cuts, concat path
+**Session D (done, then overhauled):** Transition system — density/palette based:
+- `assignTransitions(plan, analysis, density, palette, style)` in `transitions.ts` — worthiness scoring (section boundary 1.0, top-quartile beat 0.6, regular 0.2), top density% get transitions
+- `TransitionAssignment { type: string, duration: number }` replaces old `TransitionType` union
+- 4 cumulative palettes: subtle (fades/dissolves), dynamic (+wipes/slides), cinematic (+reveals/zooms), aggressive (+glitch/pixelize)
+- Per-type durations (0.4–1.2s base) scaled by MixStyle (chill ×1.5 → hyperkinetic ×0.5)
+- Flash frames preserved as special case for extreme energy spikes (0.06s, not palette-driven)
+- Section boundary tolerance widened 0.5s → 1.0s
+- `buildFilterComplexArgs` accepts variable xfade types and durations per boundary
+- Dual-path preserved: density 0 → concat demuxer (fast path), density >0 → filter_complex
+- `enableTransitions` boolean removed from `MixJobConfig`, replaced by `transitionDensity` (0–100, default 30) + `transitionPalette` (default 'dynamic')
+- Backward compat: old DB records with `enableTransitions: true` → density 30 + dynamic; `false` → density 0
 
-**Post-sprint UI wiring (done):** Mix Style dropdown (5 styles with inline hints), Transitions checkbox (`enableTransitions` on `MixJobConfig`), Min Segment Duration removed from UI (was overriding style pacing with fixed 0.5s). CLI retains `--min-segment` and `--no-transitions`. BGM file picker accepts video files. Output dir persisted. Default concurrency 3→1.
+**Post-sprint UI wiring (done, updated):** Mix Style dropdown (5 styles with inline hints), Transition Density slider (0–100%), Transition Style palette dropdown with hints, Min Segment Duration removed from UI. CLI: `--transition-density N`, `--transition-palette <name>`, `--no-transitions` as shorthand. BGM file picker accepts video files. Output dir persisted. Default concurrency 1.
 
 **How to apply:** Detection in `audio.ts`, scoring + selection in `analyze.ts`, transitions in `transitions.ts`, filter construction in `filter.ts`, types in `types.ts` + `types.ts` (mixer). Details in `docs/design.md` Audio Analysis Pipeline and Mixing Pipeline sections.

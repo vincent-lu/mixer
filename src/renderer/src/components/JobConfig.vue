@@ -14,7 +14,8 @@ const outputFormat = ref<MixJobConfig['outputFormat']>('mp4')
 const videoResolution = ref<MixJobConfig['videoResolution']>('1080p')
 const sceneDetection = ref<MixJobConfig['sceneDetection']>('random')
 const mixStyle = ref<NonNullable<MixJobConfig['mixStyle']>>('balanced')
-const enableTransitions = ref(true)
+const transitionDensity = ref(30)
+const transitionPalette = ref<NonNullable<MixJobConfig['transitionPalette']>>('dynamic')
 const outputFilename = ref('')
 const maxConcurrency = ref(1)
 
@@ -24,6 +25,13 @@ const styleHints: Record<NonNullable<MixJobConfig['mixStyle']>, string> = {
   balanced: 'Follows the music (1.5–5s)',
   energetic: 'Fast, energy-reactive (0.75–3s)',
   hyperkinetic: 'Rapid-fire, sub-second drops (0.35–1.5s)',
+}
+
+const paletteHints: Record<NonNullable<MixJobConfig['transitionPalette']>, string> = {
+  subtle: 'Fades & dissolves only',
+  dynamic: '+ directional wipes & slides',
+  cinematic: '+ dramatic reveals & zooms',
+  aggressive: '+ glitch, pixelize, slices',
 }
 
 const canStart = ref(true)
@@ -90,7 +98,8 @@ async function startMix(): Promise<void> {
       sceneDetection: sceneDetection.value,
       videoResolution: videoResolution.value,
       mixStyle: mixStyle.value,
-      enableTransitions: enableTransitions.value,
+      transitionDensity: transitionDensity.value,
+      transitionPalette: transitionPalette.value,
       outputFilename: outputFilename.value || undefined,
     }
     const name = `Mix — ${outputFilename.value || fileName(bgmPath.value)}`
@@ -185,11 +194,29 @@ async function startMix(): Promise<void> {
         <span class="style-hint">{{ styleHints[mixStyle] }}</span>
       </FormRow>
 
-      <FormRow label="Transitions">
-        <label class="toggle-label" title="Add dissolves at section boundaries and flash frames at energy drops. Disabling uses hard cuts only (faster encoding).">
-          <input v-model="enableTransitions" type="checkbox" class="toggle-checkbox" />
-          <span>{{ enableTransitions ? 'Dissolves & flashes at musical boundaries' : 'Hard cuts only (faster)' }}</span>
-        </label>
+      <FormRow label="Transition Density">
+        <div class="density-row">
+          <input
+            v-model.number="transitionDensity"
+            type="range"
+            class="density-slider"
+            min="0"
+            max="100"
+            step="5"
+          />
+          <span class="density-value">{{ transitionDensity }}%</span>
+        </div>
+        <span class="style-hint">{{ transitionDensity === 0 ? 'Hard cuts only (faster encoding)' : `${transitionDensity}% of cuts get transitions` }}</span>
+      </FormRow>
+
+      <FormRow label="Transition Style">
+        <select v-model="transitionPalette" class="select" :disabled="transitionDensity === 0" title="Controls which visual transition effects are available">
+          <option value="subtle">Subtle</option>
+          <option value="dynamic">Dynamic</option>
+          <option value="cinematic">Cinematic</option>
+          <option value="aggressive">Aggressive</option>
+        </select>
+        <span class="style-hint">{{ transitionDensity === 0 ? 'Disabled at 0% density' : paletteHints[transitionPalette] }}</span>
       </FormRow>
 
       <FormRow label="Max Concurrent Jobs">
@@ -335,17 +362,23 @@ async function startMix(): Promise<void> {
   color: #9ca3af;
 }
 
-.toggle-label {
+.density-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #d1d5db;
-  cursor: pointer;
+  gap: 10px;
 }
 
-.toggle-checkbox {
+.density-slider {
+  flex: 1;
   accent-color: #2563eb;
+  height: 4px;
+}
+
+.density-value {
+  font-size: 13px;
+  color: #d1d5db;
+  min-width: 36px;
+  text-align: right;
 }
 
 .start-btn {

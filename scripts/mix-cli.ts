@@ -1,9 +1,10 @@
 #!/usr/bin/env tsx
 
-import type { MixStyle } from '../src/shared/types'
+import type { MixStyle, TransitionPalette } from '../src/shared/types'
 import { runMixPipeline } from '../src/main/mixer/pipeline'
 
 const VALID_STYLES: MixStyle[] = ['chill', 'relaxed', 'balanced', 'energetic', 'hyperkinetic']
+const VALID_PALETTES: TransitionPalette[] = ['subtle', 'dynamic', 'cinematic', 'aggressive']
 
 interface CliArgs {
   bgm: string
@@ -12,7 +13,8 @@ interface CliArgs {
   segmentDuration?: number
   minSegment?: number
   style?: MixStyle
-  noTransitions: boolean
+  transitionDensity: number
+  transitionPalette: TransitionPalette
 }
 
 function parseArgs(): CliArgs {
@@ -22,7 +24,8 @@ function parseArgs(): CliArgs {
   let segmentDuration: number | undefined
   let minSegment: number | undefined
   let style: MixStyle | undefined
-  let noTransitions = false
+  let transitionDensity = 30
+  let transitionPalette: TransitionPalette = 'dynamic'
   const videos: string[] = []
 
   for (let i = 0; i < argv.length; i++) {
@@ -70,8 +73,26 @@ function parseArgs(): CliArgs {
         break
       }
       case '--no-transitions':
-        noTransitions = true
+        transitionDensity = 0
         break
+      case '--transition-density': {
+        const val = Number(argv[++i])
+        if (isNaN(val) || val < 0 || val > 100) {
+          console.error('--transition-density must be 0-100')
+          process.exit(1)
+        }
+        transitionDensity = val
+        break
+      }
+      case '--transition-palette': {
+        const val = argv[++i] ?? ''
+        if (!VALID_PALETTES.includes(val as TransitionPalette)) {
+          console.error(`--transition-palette must be one of: ${VALID_PALETTES.join(', ')}`)
+          process.exit(1)
+        }
+        transitionPalette = val as TransitionPalette
+        break
+      }
       default:
         console.error(`Unknown flag: ${argv[i]}`)
         process.exit(1)
@@ -80,7 +101,7 @@ function parseArgs(): CliArgs {
 
   if (!bgm || videos.length === 0 || !output) {
     console.error(
-      'Usage: pnpm mix --bgm <path> --videos <path1> [path2...] --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--no-transitions]',
+      'Usage: pnpm mix --bgm <path> --videos <path1> [path2...] --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--transition-density 0-100] [--transition-palette <name>] [--no-transitions]',
     )
     process.exit(1)
   }
@@ -94,7 +115,7 @@ function parseArgs(): CliArgs {
     console.warn('Warning: --min-segment overrides --style. Style-driven pacing will not be used.')
   }
 
-  return { bgm, videos, output, segmentDuration, minSegment, style, noTransitions }
+  return { bgm, videos, output, segmentDuration, minSegment, style, transitionDensity, transitionPalette }
 }
 
 async function main(): Promise<void> {
@@ -112,7 +133,7 @@ async function main(): Promise<void> {
     console.log(`Min gap:  ${args.minSegment ?? 'style-driven'}`)
   }
   console.log(`Style:    ${args.style ?? 'balanced'}`)
-  console.log(`Transitions: ${args.noTransitions ? 'off' : 'on'}`)
+  console.log(`Transitions: density ${args.transitionDensity}%, palette ${args.transitionPalette}`)
   console.log()
 
   const ac = new AbortController()
@@ -128,7 +149,8 @@ async function main(): Promise<void> {
     segmentDuration: args.segmentDuration,
     minSegmentDuration: args.minSegment,
     mixStyle: args.style,
-    enableTransitions: !args.noTransitions,
+    transitionDensity: args.transitionDensity,
+    transitionPalette: args.transitionPalette,
     signal: ac.signal,
     onProgress: (stage, percent) => {
       process.stdout.write(`\r[${stage}] ${String(percent).padStart(3)}%`)

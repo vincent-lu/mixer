@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { assignTransitions } from '../transitions'
-import type { AnalysisResult, BeatInfo } from '@shared/types'
+import type { AnalysisResult, BeatInfo, MixStyle, TransitionPalette } from '@shared/types'
 import type { Segment, SegmentPlan } from '../types'
 
 function makePlan(timings: number[]): SegmentPlan {
@@ -34,6 +34,23 @@ function makeAnalysis(overrides: Partial<AnalysisResult> & { sectionTimings: num
   }
 }
 
+const SUBTLE_TYPES = ['fade', 'dissolve', 'fadeblack', 'fadewhite', 'fadeslow']
+const DYNAMIC_ADDED = [
+  'wipeleft', 'wiperight', 'slideleft', 'slideright',
+  'smoothleft', 'smoothright', 'coverleft', 'coverright',
+  'revealleft', 'revealright',
+]
+
+function assign(
+  plan: SegmentPlan,
+  analysis: AnalysisResult,
+  density = 50,
+  palette: TransitionPalette = 'dynamic',
+  style: MixStyle = 'balanced',
+) {
+  return assignTransitions(plan, analysis, density, palette, style)
+}
+
 describe('assignTransitions', () => {
   it('returns empty array for single segment', () => {
     const plan = makePlan([0, 10])
@@ -42,14 +59,15 @@ describe('assignTransitions', () => {
       sections: [{ start: 0, end: 10, energy: 'medium' }],
       beats: makeBeats([1, 2, 3], [0.5, 0.5, 0.5]),
     })
-    expect(assignTransitions(plan, analysis)).toEqual([])
+    expect(assign(plan, analysis)).toEqual([])
   })
 
   it('returns all cuts when sections are absent', () => {
     const plan = makePlan([0, 3, 6, 9])
     const analysis = makeAnalysis({ sectionTimings: [0, 3, 6, 9] })
-    const transitions = assignTransitions(plan, analysis)
-    expect(transitions).toEqual(['cut', 'cut'])
+    const transitions = assign(plan, analysis)
+    expect(transitions).toHaveLength(2)
+    expect(transitions.every((t) => t.type === 'cut')).toBe(true)
   })
 
   it('returns all cuts when only one section', () => {
@@ -59,11 +77,10 @@ describe('assignTransitions', () => {
       sections: [{ start: 0, end: 9, energy: 'medium' }],
       beats: makeBeats([1, 3, 6], [0.5, 0.5, 0.5]),
     })
-    expect(assignTransitions(plan, analysis)).toEqual(['cut', 'cut'])
+    expect(assign(plan, analysis).every((t) => t.type === 'cut')).toBe(true)
   })
 
-  it('assigns dissolve at section boundary with energy change', () => {
-    // 3 segments: [0-5], [5-10], [10-15]. Section boundary at t=10 with energy change.
+  it('returns all cuts at density 0', () => {
     const plan = makePlan([0, 5, 10, 15])
     const analysis = makeAnalysis({
       sectionTimings: [0, 5, 10, 15],
@@ -73,24 +90,72 @@ describe('assignTransitions', () => {
       ],
       beats: makeBeats([5, 10, 12], [0.3, 0.4, 0.5]),
     })
-    const transitions = assignTransitions(plan, analysis)
-    expect(transitions).toHaveLength(2)
-    expect(transitions[0]).toBe('cut')
-    expect(transitions[1]).toBe('dissolve')
+    const transitions = assign(plan, analysis, 0)
+    expect(transitions.every((t) => t.type === 'cut')).toBe(true)
   })
 
-  it('does not dissolve when energy is the same across section boundary', () => {
+  it('assigns transitions to all switch points at density 100', () => {
     const plan = makePlan([0, 5, 10, 15])
     const analysis = makeAnalysis({
       sectionTimings: [0, 5, 10, 15],
       sections: [
-        { start: 0, end: 10, energy: 'medium' },
-        { start: 10, end: 15, energy: 'medium' },
+        { start: 0, end: 10, energy: 'low' },
+        { start: 10, end: 15, energy: 'high' },
       ],
-      beats: makeBeats([5, 10, 12], [0.5, 0.5, 0.5]),
+      beats: makeBeats([5, 10, 12], [0.3, 0.4, 0.5]),
     })
-    const transitions = assignTransitions(plan, analysis)
-    expect(transitions).toEqual(['cut', 'cut'])
+    const transitions = assign(plan, analysis, 100)
+    expect(transitions.every((t) => t.type !== 'cut')).toBe(true)
+  })
+
+  it('section boundaries get transitions before regular beats', () => {
+    // 5 segments, section boundary at t=10 with energy change
+    const plan = makePlan([0, 5, 10, 15, 20, 25])
+    const analysis = makeAnalysis({
+      sectionTimings: [0, 5, 10, 15, 20, 25],
+      sections: [
+        { start: 0, end: 10, energy: 'low' },
+        { start: 10, end: 25, energy: 'high' },
+      ],
+      beats: makeBeats([5, 10, 15, 20], [0.3, 0.5, 0.5, 0.5]),
+    })
+    // density 25% of 4 switch points = 1 transition → should be the section boundary
+    const transitions = assign(plan, analysis, 25)
+    const transitioned = transitions.map((t, i) => ({ i, type: t.type })).filter((t) => t.type !== 'cut')
+    expect(transitioned.length).toBe(1)
+    expect(transitioned[0]!.i).toBe(1) // index 1 = switch at t=10
+  })
+
+  it('subtle palette only produces subtle types', () => {
+    const plan = makePlan([0, 5, 10, 15])
+    const analysis = makeAnalysis({
+      sectionTimings: [0, 5, 10, 15],
+      sections: [
+        { start: 0, end: 10, energy: 'low' },
+        { start: 10, end: 15, energy: 'high' },
+      ],
+      beats: makeBeats([5, 10, 12], [0.3, 0.4, 0.5]),
+    })
+    const transitions = assign(plan, analysis, 100, 'subtle')
+    const nonCuts = transitions.filter((t) => t.type !== 'cut' && t.type !== 'flash')
+    const allSubtle = nonCuts.every((t) => SUBTLE_TYPES.includes(t.type))
+    expect(allSubtle).toBe(true)
+  })
+
+  it('dynamic palette can produce directional types', () => {
+    const allTypes = [...SUBTLE_TYPES, ...DYNAMIC_ADDED]
+    const plan = makePlan([0, 5, 10, 15])
+    const analysis = makeAnalysis({
+      sectionTimings: [0, 5, 10, 15],
+      sections: [
+        { start: 0, end: 10, energy: 'low' },
+        { start: 10, end: 15, energy: 'high' },
+      ],
+      beats: makeBeats([5, 10, 12], [0.3, 0.4, 0.5]),
+    })
+    const transitions = assign(plan, analysis, 100, 'dynamic')
+    const nonCuts = transitions.filter((t) => t.type !== 'cut' && t.type !== 'flash')
+    expect(nonCuts.every((t) => allTypes.includes(t.type))).toBe(true)
   })
 
   it('assigns flash at high energy delta after low-energy section', () => {
@@ -101,41 +166,12 @@ describe('assignTransitions', () => {
         { start: 0, end: 8, energy: 'low' },
         { start: 8, end: 12, energy: 'high' },
       ],
-      // Beat at t=8 has huge energy spike vs previous
       beats: makeBeats([2, 4, 6, 8, 10], [0.1, 0.1, 0.1, 1.0, 0.9]),
     })
-    const transitions = assignTransitions(plan, analysis)
-    expect(transitions[1]).toBe('flash')
-  })
-
-  it('flash takes priority over dissolve when both conditions match', () => {
-    const plan = makePlan([0, 5, 10])
-    const analysis = makeAnalysis({
-      sectionTimings: [0, 5, 10],
-      sections: [
-        { start: 0, end: 5, energy: 'low' },
-        { start: 5, end: 10, energy: 'high' },
-      ],
-      // Section boundary at t=5 with energy change (dissolve candidate)
-      // AND beat at t=5 with huge delta (flash candidate)
-      beats: makeBeats([2, 5, 8], [0.1, 1.0, 0.8]),
-    })
-    const transitions = assignTransitions(plan, analysis)
-    expect(transitions[0]).toBe('flash')
-  })
-
-  it('handles section boundary within tolerance', () => {
-    const plan = makePlan([0, 5, 9.8, 15])
-    const analysis = makeAnalysis({
-      sectionTimings: [0, 5, 9.8, 15],
-      sections: [
-        { start: 0, end: 10, energy: 'low' },
-        { start: 10, end: 15, energy: 'high' },
-      ],
-      beats: makeBeats([5, 9.8, 12], [0.5, 0.5, 0.5]),
-    })
-    const transitions = assignTransitions(plan, analysis)
-    expect(transitions[1]).toBe('dissolve')
+    const transitions = assign(plan, analysis, 100)
+    const flashIdx = transitions.findIndex((t) => t.type === 'flash')
+    expect(flashIdx).toBeGreaterThanOrEqual(0)
+    expect(transitions[flashIdx]!.duration).toBe(0.06)
   })
 
   it('returns all cuts when beats are absent', () => {
@@ -147,7 +183,50 @@ describe('assignTransitions', () => {
         { start: 5, end: 10, energy: 'high' },
       ],
     })
-    const transitions = assignTransitions(plan, analysis)
-    expect(transitions).toEqual(['cut'])
+    const transitions = assign(plan, analysis, 100)
+    expect(transitions.every((t) => t.type === 'cut')).toBe(true)
+  })
+
+  it('chill style produces longer durations than hyperkinetic', () => {
+    const plan = makePlan([0, 5, 10, 15])
+    const analysis = makeAnalysis({
+      sectionTimings: [0, 5, 10, 15],
+      sections: [
+        { start: 0, end: 10, energy: 'low' },
+        { start: 10, end: 15, energy: 'high' },
+      ],
+      beats: makeBeats([5, 10, 12], [0.3, 0.4, 0.5]),
+    })
+    const chillTransitions = assign(plan, analysis, 100, 'subtle', 'chill')
+    const hyperTransitions = assign(plan, analysis, 100, 'subtle', 'hyperkinetic')
+
+    const chillDurations = chillTransitions.filter((t) => t.type !== 'cut' && t.type !== 'flash')
+    const hyperDurations = hyperTransitions.filter((t) => t.type !== 'cut' && t.type !== 'flash')
+
+    expect(chillDurations.length).toBeGreaterThan(0)
+    expect(hyperDurations.length).toBeGreaterThan(0)
+    const avgChill = chillDurations.reduce((s, t) => s + t.duration, 0) / chillDurations.length
+    const avgHyper = hyperDurations.reduce((s, t) => s + t.duration, 0) / hyperDurations.length
+    expect(avgChill).toBeGreaterThan(avgHyper)
+  })
+
+  it('transitions have positive durations', () => {
+    const plan = makePlan([0, 3, 6, 9, 12, 15])
+    const analysis = makeAnalysis({
+      sectionTimings: [0, 3, 6, 9, 12, 15],
+      sections: [
+        { start: 0, end: 9, energy: 'medium' },
+        { start: 9, end: 15, energy: 'high' },
+      ],
+      beats: makeBeats([3, 6, 9, 12], [0.4, 0.5, 0.7, 0.6]),
+    })
+    const transitions = assign(plan, analysis, 100)
+    for (const t of transitions) {
+      if (t.type === 'cut') {
+        expect(t.duration).toBe(0)
+      } else {
+        expect(t.duration).toBeGreaterThan(0)
+      }
+    }
   })
 })

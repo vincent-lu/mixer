@@ -16,45 +16,41 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
     segmentDuration,
     minSegmentDuration,
     mixStyle,
-    enableTransitions = true,
+    transitionDensity = 30,
+    transitionPalette = 'dynamic',
     onProgress,
     signal,
   } = options
 
-  // Resolve to absolute paths (concat demuxer resolves relative to its own file location)
   const bgmPath = resolve(options.bgmPath)
   const sourceVideoPaths = options.sourceVideoPaths.map((p) => resolve(p))
   const outputPath = resolve(options.outputPath)
 
-  // Validate inputs exist
   await access(bgmPath)
   await Promise.all(sourceVideoPaths.map((p) => access(p)))
 
   signal?.throwIfAborted()
 
-  // Probe source videos
   const probes = await Promise.all(sourceVideoPaths.map((p) => probeVideo(p)))
 
   signal?.throwIfAborted()
 
-  // Normalize source videos to common format (skips if all already match)
   const normalizedProbes = await normalizeVideos(probes, DEFAULT_PRESET, onProgress, signal)
 
   signal?.throwIfAborted()
 
-  // Analyze BGM for cut points (also probes BGM duration internally)
   const analysis = await analyzeBgm(bgmPath, { segmentDuration, minSegmentDuration, mixStyle })
 
   onProgress?.('analyzing', 100)
 
-  // Plan segments
   const plan = buildSegmentPlan(analysis, normalizedProbes)
 
   signal?.throwIfAborted()
 
-  // Assign transitions based on musical context
-  const transitions = enableTransitions ? assignTransitions(plan, analysis) : []
-  const hasTransitions = transitions.some((t) => t !== 'cut')
+  const transitions = transitionDensity > 0
+    ? assignTransitions(plan, analysis, transitionDensity, transitionPalette, mixStyle ?? 'balanced')
+    : []
+  const hasTransitions = transitions.some((t) => t.type !== 'cut')
 
   if (hasTransitions) {
     const args = buildFilterComplexArgs(plan, transitions, bgmPath, outputPath)

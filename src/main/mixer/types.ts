@@ -1,6 +1,9 @@
-import type { MixStyle, ProgressStage } from '@shared/types'
+import type { MixStyle, ProgressStage, TransitionPalette } from '@shared/types'
 
-export type TransitionType = 'cut' | 'dissolve' | 'flash'
+export interface TransitionAssignment {
+  type: string
+  duration: number
+}
 
 export interface ProbeResult {
   path: string
@@ -32,7 +35,8 @@ export interface PipelineOptions {
   segmentDuration?: number
   minSegmentDuration?: number
   mixStyle?: MixStyle
-  enableTransitions?: boolean
+  transitionDensity?: number
+  transitionPalette?: TransitionPalette
   onProgress?: OnProgress
   signal?: AbortSignal
 }

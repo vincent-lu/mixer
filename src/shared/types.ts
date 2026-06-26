@@ -10,6 +10,8 @@ export type VideoResolution = '1080p' | '720p' | '480p' | 'source'
 
 export type MixStyle = 'chill' | 'relaxed' | 'balanced' | 'energetic' | 'hyperkinetic'
 
+export type TransitionPalette = 'subtle' | 'dynamic' | 'cinematic' | 'aggressive'
+
 export interface BeatInfo {
   time: number
   score: number
@@ -33,7 +35,8 @@ export interface MixJobConfig {
   minSegmentDuration?: number
   outputFilename?: string
   mixStyle?: MixStyle
-  enableTransitions?: boolean
+  transitionDensity?: number
+  transitionPalette?: TransitionPalette
 }
 
 export interface AnalysisResult {

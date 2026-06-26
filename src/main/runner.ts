@@ -75,13 +75,15 @@ async function executeJob(job: MixJob): Promise<void> {
 
     const outputPath = buildOutputPath(job)
 
+    const legacyTransitions = (job.config as unknown as Record<string, unknown>).enableTransitions
     const result = await runMixPipeline({
       bgmPath: job.config.bgmPath,
       sourceVideoPaths: job.config.sourceVideoPaths,
       outputPath,
       minSegmentDuration: job.config.minSegmentDuration,
       mixStyle: job.config.mixStyle,
-      enableTransitions: job.config.enableTransitions,
+      transitionDensity: job.config.transitionDensity ?? (legacyTransitions === false ? 0 : 30),
+      transitionPalette: job.config.transitionPalette ?? 'dynamic',
       onProgress: (stage, percent) => {
         const status = stage === 'mixing' || stage === 'encoding' ? 'mixing' : 'analyzing'
         if (status !== lastStatus) {
