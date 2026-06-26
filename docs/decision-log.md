@@ -4,6 +4,31 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-26 — Transition types (Session D)
+
+**Decision:** Full filter_complex approach for video transitions, with concat demuxer preserved as fast path.
+
+**Transition types:**
+- **Hard cut** (default) — most segment boundaries, no visual effect
+- **Dissolve** (0.4s `xfade=transition=fade`) — at section boundaries where energy changes (e.g., verse→chorus)
+- **Flash frame** (0.12s `fade=color=white` + concat) — at high energy delta beats after low-energy sections (drop effect)
+
+**Why filter_complex over alternatives:**
+- Single encoding pass, no temp files, no quality loss (ruled out two-pass and post-processing approaches)
+- Grouped concat optimization: consecutive hard-cut segments are batched into `concat=n=K` nodes, keeping the filter graph shallow. At 84 segments with 8 transitions, the effective graph has ~10 chain operations, not 84.
+- Scalability validated: 20-segment test with mixed transitions at 1824-char filter graph. 200 segments would produce ~18KB — well within ffmpeg's limits.
+- One `-i` per segment with `-ss` seeking for fast input demuxing.
+
+**Timebase normalization (`settb=AVTB`):** Required on each trimmed segment to prevent xfade timebase mismatch errors. Without it, concat filter outputs inherit the source timebase (1/15360), conflicting with the xfade chain's accumulated timebase (1/1000000).
+
+**Dissolve duration compensation:** Outgoing segment's source trim extends by 0.4s to provide overlap content for xfade. The extension and xfade cancel out — net output duration matches BGM timeline exactly (verified: 193.190s output vs 193.190s BGM).
+
+**Dual-path routing:** `assignTransitions()` checks `AnalysisResult.sections` and `.beats`. If all transitions are 'cut' (absent analysis data, uniform energy, click tracks), pipeline uses concat demuxer. Otherwise, filter_complex. No user config needed — transitions are fully automatic.
+
+**Flash priority:** When both dissolve and flash conditions match at a boundary (section energy change + high energy delta), flash wins. Flash is the more dramatic visual effect and is reserved for true drops.
+
+---
+
 ## 2026-06-26 — Style-driven pacing (Session C)
 
 **Decision:** Style × section energy maps to a concrete minGap via a 5×3 table. `selectScoredBeatsBySection` resolves minGap per beat based on its section, replacing the fixed-minGap approach when `minSegmentDuration` is not explicitly set.

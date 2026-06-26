@@ -1,5 +1,7 @@
 import type { MixStyle, ProgressStage } from '@shared/types'
 
+export type TransitionType = 'cut' | 'dissolve' | 'flash'
+
 export interface ProbeResult {
   path: string
   duration: number

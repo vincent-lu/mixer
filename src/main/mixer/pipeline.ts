@@ -7,6 +7,8 @@ import { analyzeBgm } from './analyze'
 import { buildSegmentPlan } from './segments'
 import { buildConcatFileContent, buildFfmpegArgs } from './concat'
 import { runFfmpeg } from './encode'
+import { buildFilterComplexArgs } from './filter'
+import { assignTransitions } from './transitions'
 import type { PipelineOptions, PipelineResult } from './types'
 
 export async function runMixPipeline(options: PipelineOptions): Promise<PipelineResult> {
@@ -49,16 +51,22 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
 
   signal?.throwIfAborted()
 
-  // Write concat file to temp location
-  const concatPath = join(tmpdir(), `mixer-concat-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`)
-  try {
-    await writeFile(concatPath, buildConcatFileContent(plan), 'utf-8')
+  // Assign transitions based on musical context
+  const transitions = assignTransitions(plan, analysis)
+  const hasTransitions = transitions.some((t) => t !== 'cut')
 
-    // Run ffmpeg
-    const args = buildFfmpegArgs(concatPath, bgmPath, outputPath)
+  if (hasTransitions) {
+    const args = buildFilterComplexArgs(plan, transitions, bgmPath, outputPath)
     await runFfmpeg(args, analysis.bgmDuration, onProgress && ((pct) => onProgress('mixing', pct)), signal)
-  } finally {
-    await unlink(concatPath).catch(() => {})
+  } else {
+    const concatPath = join(tmpdir(), `mixer-concat-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`)
+    try {
+      await writeFile(concatPath, buildConcatFileContent(plan), 'utf-8')
+      const args = buildFfmpegArgs(concatPath, bgmPath, outputPath)
+      await runFfmpeg(args, analysis.bgmDuration, onProgress && ((pct) => onProgress('mixing', pct)), signal)
+    } finally {
+      await unlink(concatPath).catch(() => {})
+    }
   }
 
   return {

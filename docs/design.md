@@ -134,7 +134,7 @@ Planned usage:
 CLI-first pipeline in `src/main/mixer/`, callable from both CLI (`pnpm mix`) and Electron IPC.
 
 ```
-probe → analyze → plan segments → concat + encode
+probe → normalize → analyze → plan segments → assign transitions → encode
 ```
 
 | Module | Role |
@@ -143,11 +143,22 @@ probe → analyze → plan segments → concat + encode
 | `audio.ts` | PCM extraction (ffmpeg) + essentia.js beat detection |
 | `analyze.ts` | BGM timing analysis (beat detection default, fixed-interval fallback) |
 | `segments.ts` | Shuffled round-robin segment assignment with cursor tracking |
-| `concat.ts` | Concat demuxer file builder + ffmpeg arg construction |
+| `transitions.ts` | Map musical context to transition types (cut/dissolve/flash) |
+| `concat.ts` | Concat demuxer file builder + ffmpeg arg construction (hard cuts only) |
+| `filter.ts` | filter_complex arg builder for mixes with transitions |
 | `encode.ts` | Spawn ffmpeg, parse progress from stderr, abort support |
 | `pipeline.ts` | Orchestrator — single async function, self-contained per invocation |
 
-**ffmpeg strategy:** concat demuxer with `inpoint`/`outpoint` per segment. Single ffmpeg command, no temp video files. Re-encodes output (frame-accurate cuts, handles any input format). Progress parsed from stderr `time=` field.
+**Dual-path ffmpeg strategy:**
+- **Concat demuxer** (fast path): when all transitions are hard cuts. `inpoint`/`outpoint` per segment, single ffmpeg command, no temp files.
+- **filter_complex** (transition path): when dissolves or flash frames are assigned. One `-i` per segment with `-ss` seeking, `trim`+`setpts`+`settb=AVTB` per segment, grouped `concat` for consecutive hard cuts, `xfade` for dissolves, `fade`+`concat` for flash frames. Single ffmpeg command, single encoding pass.
+
+Transition assignment is automatic — derived from `AnalysisResult.sections` and `.beats`. No user config needed. Graceful degradation: absent analysis data → all cuts → concat demuxer path.
+
+**Transitions:**
+- **Hard cut** (default) — most segment boundaries
+- **Dissolve** (0.4s `xfade=transition=fade`) — segment boundary coinciding with a section energy change (e.g., verse→chorus)
+- **Flash frame** (0.12s `fade=color=white`) — segment boundary at a high energy delta beat after a low-energy section (drop effect)
 
 **CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>]`
 
@@ -228,9 +239,6 @@ Test candidates (as features are built):
 - Scene selection algorithms
 
 ## Deferred
-
-Designed, not yet implemented:
-- Visual effects / transitions — ffmpeg xfade, transition type mapped to musical context (hard cut for beats, dissolve for section boundaries, flash frame for drops after silence)
 
 Not yet designed:
 - Video-side analysis — motion energy profiling, source classification (raw footage vs pre-mixed), color/mood extraction. Lower priority; user manages video selection manually. Pre-mixed input videos need different treatment from long-scene footage.
