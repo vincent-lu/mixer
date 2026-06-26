@@ -250,6 +250,14 @@ describe('resolveMinGap', () => {
     expect(resolveMinGap('hyperkinetic', 'low')).toBe(1.5)
     expect(resolveMinGap('hyperkinetic', 'medium')).toBe(0.75)
     expect(resolveMinGap('hyperkinetic', 'high')).toBe(0.35)
+
+    expect(resolveMinGap('frenetic', 'low')).toBe(0.75)
+    expect(resolveMinGap('frenetic', 'medium')).toBe(0.35)
+    expect(resolveMinGap('frenetic', 'high')).toBe(0.2)
+
+    expect(resolveMinGap('chaos', 'low')).toBe(0.35)
+    expect(resolveMinGap('chaos', 'medium')).toBe(0.2)
+    expect(resolveMinGap('chaos', 'high')).toBe(0.12)
   })
 
   it('chill never produces sub-second gaps', () => {
@@ -265,7 +273,7 @@ describe('resolveMinGap', () => {
   })
 
   it('higher energy produces smaller gaps within the same style', () => {
-    for (const style of ['chill', 'relaxed', 'balanced', 'energetic', 'hyperkinetic'] as const) {
+    for (const style of ['chill', 'relaxed', 'balanced', 'energetic', 'hyperkinetic', 'frenetic', 'chaos'] as const) {
       expect(resolveMinGap(style, 'low')).toBeGreaterThan(resolveMinGap(style, 'medium'))
       expect(resolveMinGap(style, 'medium')).toBeGreaterThan(resolveMinGap(style, 'high'))
     }
@@ -277,6 +285,8 @@ describe('resolveMinGap', () => {
       expect(resolveMinGap('relaxed', energy)).toBeGreaterThan(resolveMinGap('balanced', energy))
       expect(resolveMinGap('balanced', energy)).toBeGreaterThan(resolveMinGap('energetic', energy))
       expect(resolveMinGap('energetic', energy)).toBeGreaterThan(resolveMinGap('hyperkinetic', energy))
+      expect(resolveMinGap('hyperkinetic', energy)).toBeGreaterThan(resolveMinGap('frenetic', energy))
+      expect(resolveMinGap('frenetic', energy)).toBeGreaterThan(resolveMinGap('chaos', energy))
     }
   })
 })
@@ -337,6 +347,49 @@ describe('selectScoredBeatsBySection', () => {
     const hyperResult = selectScoredBeatsBySection(beats, uniformSections, 'hyperkinetic', 60)
 
     expect(chillResult.length).toBeLessThan(hyperResult.length)
+  })
+
+  it('chaos produces more cuts than hyperkinetic', () => {
+    const beats: BeatInfo[] = Array.from({ length: 200 }, (_, i) => ({
+      time: 0.5 * (i + 1),
+      score: 0.5,
+      energy: 0.5,
+      onsetDistance: 0.1,
+    }))
+
+    const hyperResult = selectScoredBeatsBySection(beats, uniformSections, 'hyperkinetic', 60)
+    const chaosResult = selectScoredBeatsBySection(beats, uniformSections, 'chaos', 60)
+
+    expect(chaosResult.length).toBeGreaterThan(hyperResult.length)
+  })
+
+  it('lookahead 0 takes first eligible beat (greedy)', () => {
+    const sections: Section[] = [{ start: 0, end: 20, energy: 'high' }]
+    const beats: BeatInfo[] = [
+      { time: 1.5, score: 0.3, energy: 0.2, onsetDistance: 0.5 },
+      { time: 1.8, score: 0.9, energy: 0.8, onsetDistance: 0.01 },
+    ]
+
+    const result = selectScoredBeatsBySection(beats, sections, 'balanced', 20, 0)
+
+    expect(result[1]).toBe(1.5)
+  })
+
+  it('explicit lookahead overrides style default', () => {
+    const sections: Section[] = [{ start: 0, end: 20, energy: 'high' }]
+    // hyperkinetic/high: minGap 0.35, default lookahead 0.2, ratio floor 0.14
+    // default window: 0.35 + max(0.2, 0.14) = 0.55 → beat at 0.7 outside → picks 0.35
+    // explicit 0.5: 0.35 + max(0.5, 0.14) = 0.85 → beat at 0.7 inside → picks 0.7
+    const beats: BeatInfo[] = [
+      { time: 0.35, score: 0.3, energy: 0.2, onsetDistance: 0.5 },
+      { time: 0.7, score: 0.9, energy: 0.8, onsetDistance: 0.01 },
+    ]
+
+    const withDefault = selectScoredBeatsBySection(beats, sections, 'hyperkinetic', 20)
+    const withWider = selectScoredBeatsBySection(beats, sections, 'hyperkinetic', 20, 0.5)
+
+    expect(withDefault[1]).toBe(0.35)
+    expect(withWider[1]).toBe(0.7)
   })
 
   it('returns [0, bgmDuration] for empty beats', () => {

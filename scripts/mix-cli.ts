@@ -3,7 +3,7 @@
 import type { ClipEffect, MixStyle, TransitionEffect } from '../src/shared/types'
 import { runMixPipeline } from '../src/main/mixer/pipeline'
 
-const VALID_STYLES: MixStyle[] = ['chill', 'relaxed', 'balanced', 'energetic', 'hyperkinetic']
+const VALID_STYLES: MixStyle[] = ['chill', 'relaxed', 'balanced', 'energetic', 'hyperkinetic', 'frenetic', 'chaos']
 const VALID_TRANSITION_EFFECTS: TransitionEffect[] = ['cut', 'circleopen', 'fadewhite', 'horzopen', 'vertopen', 'acid', 'doublevision', 'solarize', 'strobe', 'strobe_white']
 const VALID_CLIP_EFFECTS: ClipEffect[] = ['none', 'shake', 'shake_hard', 'shake_blur', 'zoompulse', 'kenburns', 'drift', 'vignette_pulse', 'hueshift', 'flashpulse', 'negflash', 'chromatic']
 
@@ -14,6 +14,7 @@ interface CliArgs {
   segmentDuration?: number
   minSegment?: number
   style?: MixStyle
+  lookahead?: number
   transitionDensity: number
   transitionEffect: TransitionEffect
   clipEffect: ClipEffect
@@ -27,6 +28,7 @@ function parseArgs(): CliArgs {
   let segmentDuration: number | undefined
   let minSegment: number | undefined
   let style: MixStyle | undefined
+  let lookahead: number | undefined
   let transitionDensity = 30
   let transitionEffect: TransitionEffect = 'cut'
   let clipEffect: ClipEffect = 'none'
@@ -77,6 +79,15 @@ function parseArgs(): CliArgs {
         style = val as MixStyle
         break
       }
+      case '--lookahead': {
+        const val = Number(argv[++i])
+        if (isNaN(val) || val < 0) {
+          console.error('--lookahead must be a non-negative number')
+          process.exit(1)
+        }
+        lookahead = val
+        break
+      }
       case '--no-transitions':
         transitionDensity = 0
         break
@@ -124,7 +135,7 @@ function parseArgs(): CliArgs {
 
   if (!bgm || videos.length === 0 || !output) {
     console.error(
-      'Usage: pnpm mix --bgm <path> --videos <path1> [path2...] --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--transition-density 0-100] [--transition-effect <name>] [--clip-effect <name>] [--effect-chance 0-100] [--no-transitions]',
+      'Usage: pnpm mix --bgm <path> --videos <path1> [path2...] --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>] [--lookahead <s>] [--transition-density 0-100] [--transition-effect <name>] [--clip-effect <name>] [--effect-chance 0-100] [--no-transitions]',
     )
     process.exit(1)
   }
@@ -134,11 +145,11 @@ function parseArgs(): CliArgs {
     process.exit(1)
   }
 
-  if (minSegment !== undefined && style !== undefined) {
-    console.warn('Warning: --min-segment overrides --style. Style-driven pacing will not be used.')
+  if (minSegment !== undefined && (style !== undefined || lookahead !== undefined)) {
+    console.warn('Warning: --min-segment overrides --style and --lookahead. Style-driven pacing will not be used.')
   }
 
-  return { bgm, videos, output, segmentDuration, minSegment, style, transitionDensity, transitionEffect, clipEffect, effectChance }
+  return { bgm, videos, output, segmentDuration, minSegment, style, lookahead, transitionDensity, transitionEffect, clipEffect, effectChance }
 }
 
 async function main(): Promise<void> {
@@ -156,6 +167,7 @@ async function main(): Promise<void> {
     console.log(`Min gap:  ${args.minSegment ?? 'style-driven'}`)
   }
   console.log(`Style:    ${args.style ?? 'balanced'}`)
+  console.log(`Lookahead: ${args.lookahead ?? 'style default'}`)
   console.log(`Transitions: effect ${args.transitionEffect}, density ${args.transitionDensity}%`)
   console.log(`Clip effect: ${args.clipEffect}, chance ${args.effectChance}%`)
   console.log()
@@ -173,6 +185,7 @@ async function main(): Promise<void> {
     segmentDuration: args.segmentDuration,
     minSegmentDuration: args.minSegment,
     mixStyle: args.style,
+    lookahead: args.lookahead,
     transitionDensity: args.transitionDensity,
     transitionEffect: args.transitionEffect,
     clipEffect: args.clipEffect,

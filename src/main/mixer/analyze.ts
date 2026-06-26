@@ -1,3 +1,4 @@
+import { DEFAULT_STYLE_LOOKAHEAD } from '@shared/types'
 import type { AnalysisResult, BeatInfo, MixStyle, Section } from '@shared/types'
 import { extractPcm, detectBeats, detectOnsets, computePerBeatEnergy } from './audio'
 import { probeAudioDuration } from './probe'
@@ -8,6 +9,7 @@ export interface AnalyzeOptions {
   segmentDuration?: number
   minSegmentDuration?: number
   mixStyle?: MixStyle
+  lookahead?: number
 }
 
 const BEAT_TOLERANCE = 0.02
@@ -17,7 +19,6 @@ const SECTION_WINDOW = 1.0
 const MIN_SECTION_DURATION = 1.5
 const MIN_RMS_RANGE = 0.01
 const SCORED_LOOKAHEAD = 2.0
-const MIN_LOOKAHEAD = 0.5
 const LOOKAHEAD_RATIO = 0.4
 
 const MIN_GAP_TABLE: Record<MixStyle, Record<Section['energy'], number>> = {
@@ -26,6 +27,8 @@ const MIN_GAP_TABLE: Record<MixStyle, Record<Section['energy'], number>> = {
   balanced: { low: 5.0, medium: 3.0, high: 1.5 },
   energetic: { low: 3.0, medium: 1.5, high: 0.75 },
   hyperkinetic: { low: 1.5, medium: 0.75, high: 0.35 },
+  frenetic: { low: 0.75, medium: 0.35, high: 0.2 },
+  chaos: { low: 0.35, medium: 0.2, high: 0.12 },
 }
 
 export function selectBeats(ticks: number[], minDuration: number, bgmDuration: number): number[] {
@@ -214,9 +217,11 @@ export function selectScoredBeatsBySection(
   sections: Section[],
   style: MixStyle,
   bgmDuration: number,
+  lookahead?: number,
 ): number[] {
   const timings: number[] = [0]
   let idx = 0
+  const effectiveLookahead = lookahead ?? DEFAULT_STYLE_LOOKAHEAD[style]
 
   while (idx < beats.length) {
     const lastSwitch = timings[timings.length - 1]!
@@ -230,10 +235,15 @@ export function selectScoredBeatsBySection(
 
     if (idx >= beats.length || beats[idx]!.time >= bgmDuration) break
 
-    const firstSection = findSection(sections, beats[idx]!.time)
-    const firstMinGap = resolveMinGap(style, firstSection.energy)
-    const lookahead = Math.max(MIN_LOOKAHEAD, firstMinGap * LOOKAHEAD_RATIO)
-    const windowEnd = beats[idx]!.time + lookahead
+    if (effectiveLookahead === 0) {
+      timings.push(beats[idx]!.time)
+      idx++
+      continue
+    }
+
+    const firstMinGap = resolveMinGap(style, findSection(sections, beats[idx]!.time).energy)
+    const windowLookahead = Math.max(effectiveLookahead, firstMinGap * LOOKAHEAD_RATIO)
+    const windowEnd = beats[idx]!.time + windowLookahead
 
     let bestIdx = idx
     for (
@@ -300,6 +310,7 @@ export async function analyzeBgm(
 
   const explicitMinGap = options.minSegmentDuration
   const style = options.mixStyle ?? 'balanced'
+  const lookahead = options.lookahead
 
   try {
     const pcm = await extractPcm(bgmPath)
@@ -314,7 +325,7 @@ export async function analyzeBgm(
     const sectionTimings =
       explicitMinGap !== undefined
         ? selectScoredBeats(beats, explicitMinGap, bgmDuration)
-        : selectScoredBeatsBySection(beats, sections, style, bgmDuration)
+        : selectScoredBeatsBySection(beats, sections, style, bgmDuration, lookahead)
 
     return {
       bpm,

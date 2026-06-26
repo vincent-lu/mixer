@@ -8,7 +8,7 @@ export type OutputFormat = 'mp4' | 'mkv' | 'mov'
 
 export type VideoResolution = '1080p' | '720p' | '480p' | 'source'
 
-export type MixStyle = 'chill' | 'relaxed' | 'balanced' | 'energetic' | 'hyperkinetic'
+export type MixStyle = 'chill' | 'relaxed' | 'balanced' | 'energetic' | 'hyperkinetic' | 'frenetic' | 'chaos'
 
 export type TransitionEffect = 'cut' | 'circleopen' | 'fadewhite' | 'horzopen' | 'vertopen' | 'acid' | 'doublevision' | 'solarize' | 'strobe' | 'strobe_white'
 
@@ -41,6 +41,7 @@ export interface MixJobConfig {
   transitionEffect?: TransitionEffect
   clipEffect?: ClipEffect
   effectChance?: number
+  lookahead?: number
 }
 
 export interface AnalysisResult {
@@ -80,6 +81,16 @@ export interface AppSettings {
   maxConcurrency: number
   defaultOutputDir: string | null
   lastUsedPresetId: number | null
+}
+
+export const DEFAULT_STYLE_LOOKAHEAD: Record<MixStyle, number> = {
+  chill: 1.0,
+  relaxed: 0.8,
+  balanced: 0.5,
+  energetic: 0.3,
+  hyperkinetic: 0.2,
+  frenetic: 0.1,
+  chaos: 0.0,
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {

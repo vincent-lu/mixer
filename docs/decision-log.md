@@ -4,6 +4,25 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-27 — Frenetic/chaos styles + configurable lookahead
+
+**Decision:** Add two faster mix styles ('frenetic', 'chaos') and make the scored beat selection lookahead configurable per style with a UI override field.
+
+**Context:** The hardcoded `MIN_LOOKAHEAD = 0.5` meant that even with very small min gaps, the algorithm waited 0.5s past the gap to find the best-scored beat — bottlenecking effective cut speed. The fastest style (hyperkinetic HIGH = 0.35s) with 0.5s lookahead produced significantly fewer cuts than the old greedy `selectBeats()` with `--min-segment 0.2`.
+
+**Changes:**
+- `MixStyle` union extended: + 'frenetic' | 'chaos'
+- Per-style default lookahead table: chill 1.0s → chaos 0.0s. When 0, `selectScoredBeatsBySection` takes the first eligible beat (greedy, no scoring window)
+- `lookahead?: number` added to `MixJobConfig`, `PipelineOptions`, `AnalyzeOptions`, `selectScoredBeatsBySection` signature
+- UI: lookahead number input auto-tracks style default, user override tracked separately
+- CLI: `--lookahead <seconds>` flag
+- Transition duration scale factors: frenetic ×0.35, chaos ×0.2
+- Gap table: frenetic {0.75, 0.35, 0.2}, chaos {0.35, 0.2, 0.12}
+
+**Rationale:** Preserves scored selection for moderate styles while enabling truly rapid greedy cuts at the extreme end. Configurable lookahead lets users tune the trade-off between beat quality and cut speed.
+
+---
+
 ## 2026-06-26 — Clip effects + transition simplification
 
 **Decision:** Add per-segment clip effects (11 effect types plus 'none': shake, shake_hard, shake_blur, zoompulse, kenburns, drift, vignette_pulse, hueshift, flashpulse, negflash, chromatic) and simplify transitions from palette-based random selection to single-effect-per-mix.

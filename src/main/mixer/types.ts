@@ -39,6 +39,7 @@ export interface PipelineOptions {
   transitionEffect?: TransitionEffect
   clipEffect?: ClipEffect
   effectChance?: number
+  lookahead?: number
   onProgress?: OnProgress
   signal?: AbortSignal
 }

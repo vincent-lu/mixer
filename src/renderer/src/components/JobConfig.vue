@@ -2,10 +2,21 @@
 import { ref, watch, onMounted } from 'vue'
 import { platform } from '@renderer/platform'
 import type { MixJobConfig } from '@renderer/platform'
+import { DEFAULT_STYLE_LOOKAHEAD } from '@shared/types'
 import { useJobsStore } from '@renderer/stores/jobs'
 import FormRow from './config/FormRow.vue'
 
 const store = useJobsStore()
+
+const styleHints: Record<NonNullable<MixJobConfig['mixStyle']>, string> = {
+  chill: 'Long, lingering shots (5–12s)',
+  relaxed: 'Gentle pacing (3.5–9s)',
+  balanced: 'Follows the music (1.5–5s)',
+  energetic: 'Fast, energy-reactive (0.75–3s)',
+  hyperkinetic: 'Rapid-fire, sub-second drops (0.35–1.5s)',
+  frenetic: 'Near-greedy, sub-beat everywhere (0.2–0.75s)',
+  chaos: 'Every beat, no scoring (0.12–0.35s)',
+}
 
 const bgmPath = ref('')
 const sourceVideoPaths = ref<string[]>([])
@@ -18,16 +29,9 @@ const transitionDensity = ref(30)
 const transitionEffect = ref<NonNullable<MixJobConfig['transitionEffect']>>('cut')
 const clipEffect = ref<NonNullable<MixJobConfig['clipEffect']>>('none')
 const effectChance = ref(0)
+const lookahead = ref(DEFAULT_STYLE_LOOKAHEAD.balanced)
 const outputFilename = ref('')
 const maxConcurrency = ref(1)
-
-const styleHints: Record<NonNullable<MixJobConfig['mixStyle']>, string> = {
-  chill: 'Long, lingering shots (5–12s)',
-  relaxed: 'Gentle pacing (3.5–9s)',
-  balanced: 'Follows the music (1.5–5s)',
-  energetic: 'Fast, energy-reactive (0.75–3s)',
-  hyperkinetic: 'Rapid-fire, sub-second drops (0.35–1.5s)',
-}
 
 const canStart = ref(true)
 
@@ -41,6 +45,10 @@ onMounted(async () => {
 
 watch(maxConcurrency, (val) => {
   platform.setMaxConcurrency(val)
+})
+
+watch(mixStyle, (val) => {
+  lookahead.value = DEFAULT_STYLE_LOOKAHEAD[val]
 })
 
 watch(clipEffect, (val, oldVal) => {
@@ -103,6 +111,7 @@ async function startMix(): Promise<void> {
       transitionEffect: transitionEffect.value,
       clipEffect: clipEffect.value,
       effectChance: effectChance.value,
+      lookahead: lookahead.value,
       outputFilename: outputFilename.value || undefined,
     }
     const name = `Mix — ${outputFilename.value || fileName(bgmPath.value)}`
@@ -193,8 +202,26 @@ async function startMix(): Promise<void> {
           <option value="balanced" title="Moderate pacing that follows the music. Cuts every 1.5–5s depending on energy.">Balanced</option>
           <option value="energetic" title="Fast cuts that react strongly to energy. Cuts every 0.75–3s depending on energy.">Energetic</option>
           <option value="hyperkinetic" title="Rapid-fire cuts, sub-second during drops. Cuts every 0.35–1.5s depending on energy.">Hyperkinetic</option>
+          <option value="frenetic" title="Near-greedy, sub-beat everywhere. Cuts every 0.2–0.75s depending on energy.">Frenetic</option>
+          <option value="chaos" title="Every beat, no scoring. Cuts every 0.12–0.35s depending on energy.">Chaos</option>
         </select>
         <span class="style-hint">{{ styleHints[mixStyle] }}</span>
+      </FormRow>
+
+      <FormRow label="Lookahead">
+        <div class="lookahead-row">
+          <input
+            :value="lookahead"
+            type="number"
+            class="input lookahead-input"
+            min="0"
+            max="2"
+            step="0.1"
+            @input="lookahead = Math.max(0, Math.min(2, Number(($event.target as HTMLInputElement).value)))"
+          />
+          <span class="lookahead-unit">s</span>
+        </div>
+        <span class="style-hint">Scoring window past min gap (0 = greedy first-eligible beat)</span>
       </FormRow>
 
       <FormRow label="Transition Effect">
@@ -389,6 +416,21 @@ async function startMix(): Promise<void> {
 
 .input.filename-input {
   width: 100%;
+}
+
+.lookahead-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input.lookahead-input {
+  width: 72px;
+}
+
+.lookahead-unit {
+  font-size: 13px;
+  color: #9ca3af;
 }
 
 .number-input {

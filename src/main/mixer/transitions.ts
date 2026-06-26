@@ -12,6 +12,8 @@ const STYLE_DURATION_SCALE: Record<MixStyle, number> = {
   balanced: 1.0,
   energetic: 0.7,
   hyperkinetic: 0.5,
+  frenetic: 0.35,
+  chaos: 0.2,
 }
 
 const BASE_DURATIONS: Record<Exclude<TransitionEffect, 'cut'>, number> = {

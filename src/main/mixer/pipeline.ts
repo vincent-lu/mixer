@@ -21,6 +21,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
     transitionEffect = 'cut', // runner.ts overrides to 'circleopen' for legacy DB records
     clipEffect = 'none',
     effectChance = 0,
+    lookahead,
     onProgress,
     signal,
   } = options
@@ -42,7 +43,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
 
   signal?.throwIfAborted()
 
-  const analysis = await analyzeBgm(bgmPath, { segmentDuration, minSegmentDuration, mixStyle })
+  const analysis = await analyzeBgm(bgmPath, { segmentDuration, minSegmentDuration, mixStyle, lookahead })
 
   onProgress?.('analyzing', 100)
 
