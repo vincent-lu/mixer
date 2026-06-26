@@ -4,6 +4,42 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-26 — Multi-layer audio analysis design
+
+### Three analysis layers on top of beat detection
+
+**Decision:** Extend audio analysis with three new layers: onset detection (`SuperFluxExtractor`), per-beat energy (manual windowing + `RMS`), and energy-based section detection. Each layer adds optional fields to `AnalysisResult`. A composite score (onset proximity 0.4, energy 0.35, energy delta 0.25) ranks beats as scene switch candidates. Beat selection changes from greedy first-past-gap to highest-scored-within-gap-window.
+
+**Why:** Testing on 4 tracks (click metronome, K-pop, EDM remix, Spanish pop) showed: (1) energy spread is the strongest differentiator — EDM had 218x spread vs click track's 1.0x, (2) onset density correlates with energy but adds independent info (distinguishes "loud and static" from "loud and busy"), (3) scored approach consistently reduces cut count while shifting switch points to structurally meaningful moments (section transitions, drop entries).
+
+### essentia.js: stick with it, manual workarounds for WASM crashes
+
+**Decision:** Keep essentia.js as sole audio analysis library. `BeatsLoudness` and `FrameGenerator` crash in Node.js CJS WASM context (essentia.js 0.1.3 is the latest and last version). Use manual windowing + `RMS` for per-beat energy, manual `signal.slice()` for frame iteration. No new library dependencies.
+
+**Why:** The crashing algorithms have trivial 5-line manual alternatives that are tested and working. Adding a second library (Meyda, aubiojs) means more deps, potential WASM conflicts in Electron, and build complexity — all for algorithms we can implement manually.
+
+### Style-driven pacing as part of preset system
+
+**Decision:** Cut pacing controlled by a mix style parameter in `MixJobConfig` (spectrum from near-playthrough to hyperkinetic). Energy sections modulate the base pacing per style. This is part of the preset system, not a standalone UI element.
+
+**Why:** "When to cut" is style-dependent — the same track might want lingering shots or dizzying fast cuts depending on creative intent. The analysis data is the same; the interpretation changes. Research finding "don't cut on every beat" applies to some styles but not others — at the EDM/hyperkinetic end, you might want sub-beat cuts on every onset.
+
+### Transition types mapped to musical context
+
+**Decision:** Map transition types to musical context: hard cuts for normal beats, short dissolve for section boundaries, flash frame for drops after silence, longer crossfade for low-energy sections. Implementation via ffmpeg xfade (already in deferred list). Style parameter also influences transition mix.
+
+### Video-side analysis deferred
+
+**Decision:** Video motion profiling, scene detection, color/mood extraction, and source classification are lower priority. User manages video selection manually. When implemented, must distinguish raw footage from pre-mixed input videos (pre-mixed would produce garbage from motion/scene analysis).
+
+### Priority tiers
+
+- **Tier 1 (next sprint):** Scored beat selection, style-driven pacing, transition types
+- **Tier 2 (audio enrichment):** Frequency band energy, bar/phrase awareness, silence/drop detection
+- **Tier 3 (deferred):** Video-side analysis, narrative structure, audio-visual energy matching
+
+---
+
 ## 2026-06-25 — Video preprocessing: in-place normalization
 
 **Decision:** Normalize source videos to a target preset (h264, 1920x1080, 30fps) before mixing. Videos already matching the preset are skipped. Normalization replaces the original file in-place via atomic temp-write + `rename()`. All videos normalize concurrently via `Promise.all`. Progress reported as a `normalizing` stage, mapped to the `analyzing` job status.

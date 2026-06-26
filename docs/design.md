@@ -97,15 +97,33 @@ pending → analyzing → mixing → done
 
 Uses essentia.js (WASM) running in the main process (`src/main/mixer/audio.ts`). PCM extracted via ffmpeg, then analyzed synchronously.
 
+### Implemented
+
 1. **Beat detection** (`BeatTrackerMultiFeature`) — finds beat positions and derives BPM from median inter-beat interval
 2. **Beat selection** — filters beat ticks by configurable minimum gap (default 0.5s), producing scene switch timings
-3. **Onset detection** (planned: spectral flux) — detects musical events
-4. **Section segmentation** (planned) — identifies structural boundaries (verse/chorus/bridge)
-5. **Transition scoring** (planned) — scores beat positions as scene switch candidates
 
-Currently implemented: beat detection + beat selection. Falls back to fixed-interval timing if beat detection fails.
+Falls back to fixed-interval timing if beat detection fails.
 
-`AnalysisResult` is designed with all layers as optional fields — the mixing pipeline uses whatever is available, falling back to simpler strategies (e.g., fixed-interval timing) when higher layers are absent. This allows incremental analysis improvements without restructuring the pipeline.
+### Designed (not yet implemented)
+
+3. **Onset detection** (`SuperFluxExtractor`) — returns onset event times in seconds. Detects musical events (cymbal hits, note attacks, drops) independent of the beat grid. Tested: 6 onsets on synthetic signal, 1200-1300 on real songs.
+4. **Per-beat energy** (manual windowing + `RMS`) — 100ms window around each beat position, compute RMS. Gives energy level per beat. `BeatsLoudness` crashes in WASM; manual approach works and gives more control.
+5. **Energy-based sections** — RMS curve at regular intervals, classify as low/medium/high by distribution, merge consecutive same-level windows. Detects verse/chorus/bridge boundaries by energy profile.
+6. **Scored beat selection** — composite score per beat: onset proximity (is a musical event near this beat?), energy level (absolute RMS), energy delta (change from previous beat — surfaces transitions). Within a gap window, pick the highest-scored beat instead of greedy first-past-gap.
+
+### Planned (not yet designed in detail)
+
+7. **Frequency band energy** (`EnergyBand`) — distinguish bass drops from hi-hat rolls. Bass energy drives cut timing; treble energy could influence transition speed.
+8. **Bar/phrase awareness** — infer bar boundaries from BPM (groups of 4 beats). Prefer downbeats for cuts. In calmer styles, cut only on bar/phrase boundaries.
+9. **Silence/drop detection** — detect near-silence moments (RMS below threshold for >0.3s). Special treatment: hold a single shot during silence, trigger cut at energy spike.
+
+### Style-driven pacing
+
+Cut pacing is controlled by a mix style parameter (part of `MixJobConfig` / presets). The audio analysis provides information; the style controls how aggressively the pipeline reacts to it. Spectrum from minimal cuts (near-playthrough) to hyperkinetic (sub-beat cuts on every onset). Energy sections modulate the base pacing: high-energy sections get denser cuts, low-energy sections get sparser cuts, scaled by the style setting.
+
+### Extension strategy
+
+`AnalysisResult` uses optional fields — the mixing pipeline consumes whatever layers are available, falling back to simpler strategies when higher layers are absent. New analysis layers add fields without breaking the existing pipeline.
 
 ## ffmpeg Integration
 
@@ -218,11 +236,12 @@ Test candidates (as features are built):
 ## Deferred
 
 Designed, not yet implemented:
-- Visual effects / transitions (ffmpeg xfade as starting point)
+- Multi-layer audio analysis — onset detection, energy profiling, scored beat selection, energy-based sections (see Audio Analysis Pipeline)
+- Style-driven pacing — mix style parameter controlling cut density and energy reactivity (see Audio Analysis Pipeline)
+- Visual effects / transitions — ffmpeg xfade, transition type mapped to musical context (hard cut for beats, dissolve for section boundaries, flash frame for drops after silence)
 
 Not yet designed:
-- Multi-layer audio analysis (onset + segmentation)
-- ffmpeg scene detection integration
-- Preset save/load UI
+- Video-side analysis — motion energy profiling, source classification (raw footage vs pre-mixed), color/mood extraction. Lower priority; user manages video selection manually. Pre-mixed input videos need different treatment from long-scene footage.
+- Preset save/load UI — closely related to mix style; presets would capture style + pacing + transition preferences alongside BGM/video/output settings
 - Output preview
 - Batch operations
