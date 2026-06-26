@@ -1,13 +1,13 @@
 ---
 name: project-audio-analysis-design
-description: Multi-layer audio analysis — Sessions A–C done (types, detection, scoring, style-driven pacing). Session D remaining (transitions).
+description: Multi-layer audio analysis — all 4 sessions complete (types, detection, scoring, style-driven pacing, transitions).
 metadata:
   type: project
 ---
 
 Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-analysis]] (beat detection, implemented).
 
-**Current state:** Sessions A–C complete. Style-driven pacing is wired into `analyzeBgm()` — style × section energy determines cut density per beat. Validated on 5 test tracks across all 5 styles.
+**Current state:** All 4 sessions complete. The full pipeline: beat detection → onset detection → energy analysis → section detection → scored beat selection → style-driven pacing → transition assignment → dual-path encoding (concat demuxer or filter_complex).
 
 **Session A (done):** Types (`BeatInfo`, `Section`, `MixStyle` union) + optional fields on `AnalysisResult`/`MixJobConfig` in `types.ts`. `detectOnsets()` and `computePerBeatEnergy()` in `audio.ts` with tests.
 
@@ -26,9 +26,12 @@ Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-an
 - Wired through `PipelineOptions`, `runner.ts`, CLI `--style` flag
 - Validation: chill ~12-30 segments, hyperkinetic ~96-249 for 2-3 min songs
 
-**Transition types:** Not yet implemented. Hard cut (normal beats), dissolve (section boundaries), flash frame (drops after silence). Via ffmpeg xfade.
+**Session D (done):** Transition types — ffmpeg xfade mapped to musical context:
+- `assignTransitions(plan, analysis)` in `transitions.ts` — maps section boundaries and beat energy to `TransitionType` ('cut' | 'dissolve' | 'flash')
+- `buildFilterComplexArgs(plan, transitions, bgmPath, outputPath)` in `filter.ts` — builds filter_complex with grouped concat, xfade for dissolves, fade+concat for flash frames
+- Dual-path in `pipeline.ts`: all cuts → concat demuxer (fast path), any transitions → filter_complex (single-pass encoding)
+- `settb=AVTB` on each trimmed segment prevents xfade timebase mismatch
+- Dissolve outgoing segments extended by 0.4s for overlap content; net output duration matches BGM exactly
+- Validation: Girls' Day track → 84 segments (75 cuts, 7 dissolves, 1 flash), 193.19s output matching BGM; click track → all cuts, concat path
 
-**Remaining session:**
-- **Session D:** Transition types — ffmpeg xfade mapped to musical context
-
-**How to apply:** Detection in `audio.ts`, scoring + selection in `analyze.ts`, types in `types.ts`. Details in `docs/design.md` Audio Analysis Pipeline section.
+**How to apply:** Detection in `audio.ts`, scoring + selection in `analyze.ts`, transitions in `transitions.ts`, filter construction in `filter.ts`, types in `types.ts` + `types.ts` (mixer). Details in `docs/design.md` Audio Analysis Pipeline and Mixing Pipeline sections.
