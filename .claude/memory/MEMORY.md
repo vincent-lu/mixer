@@ -15,6 +15,7 @@
 - [Audio analysis design](project_audio-analysis-design.md) — All 4 sessions complete (types, detection, scoring, pacing, transitions)
 - [QoL sprint](project_qol-sprint.md) — complete: all 4 items done (vestigial IPC, stale docs, retry, push progress)
 - [Parallel encoding](project_parallel-encoding.md) — idea: split single jobs into N parallel ffmpeg chunks for faster encoding
+- [Agent mixer](project_agent-mixer.md) — idea: LLM agent auto-selects BGMs + videos and runs mixes via CLI
 
 ## References
 
