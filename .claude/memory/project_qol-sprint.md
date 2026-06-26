@@ -13,7 +13,7 @@ Quality-of-life sprint to close small/foundational items before adding more feat
 
 **Items (in suggested order):**
 
-1. ~~**Remove vestigial IPC handlers**~~ — Done (3725755). Removed `jobs:updateStatus`, `jobs:updateProgress`, `jobs:complete`, `jobs:fail` from IPC, preload, preload .d.ts, Platform interface, and electron.ts. `jobs:updateAnalysis` also vestigial but left as out-of-scope.
+1. ~~**Remove vestigial IPC handlers**~~ — Done (3725755). Removed `jobs:updateStatus`, `jobs:updateProgress`, `jobs:complete`, `jobs:fail` from IPC, preload, preload .d.ts, Platform interface, and electron.ts. `jobs:updateAnalysis` also removed later (cb1177d).
 
 2. ~~**Fix stale design.md**~~ — Done (2062eb7). Updated Audio Analysis Pipeline section to reflect main-process beat detection via `BeatTrackerMultiFeature`.
 
