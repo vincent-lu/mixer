@@ -6,6 +6,7 @@
 - [IPC event race](feedback_ipc-event-race.md) — push event handlers must update-only, never add; broadcast arrives before invoke response
 - [Mix style priorities](feedback_mix-style-priorities.md) — style is creative intent (playthrough↔hyperkinetic), not a rule; video analysis deferred, user curates inputs
 - [xfade timebase](feedback_ffmpeg-xfade-timebase.md) — xfade requires matching timebases; always use settb=AVTB on trimmed segments in filter_complex
+- [Worker session reports](feedback_worker-session-reports.md) — concise reports (300 words): hashes, decisions, surprises, watch items. Not re-descriptions.
 
 ## Project state
 - [PMV_Generator reference](project_reference-pmv-generator.md) — what mixer kept/dropped from the Python predecessor
