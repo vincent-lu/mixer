@@ -103,20 +103,17 @@ Uses essentia.js (WASM) running in the main process (`src/main/mixer/audio.ts`).
 2. **Beat selection** — filters beat ticks by configurable minimum gap (default 0.5s), producing scene switch timings. Retained as fallback when scored data is unavailable.
 3. **Onset detection** (`SuperFluxExtractor`) — returns onset event times in seconds. Detects musical events (cymbal hits, note attacks, drops) independent of the beat grid. 1200-1300 events on real songs.
 4. **Per-beat energy** (manual windowing + `RMS`) — 100ms window around each beat position, compute RMS. Gives energy level per beat. `BeatsLoudness` crashes in WASM; manual approach works and gives more control.
-5. **Energy-based sections** (`detectSections`) — RMS curve at 0.5s hop / 1.0s window, classify as low/medium/high by thirds of the min-max range, merge consecutive same-level windows, filter sections shorter than 1.5s. Populates `AnalysisResult.sections`.
-6. **Scored beat selection** (`scoreBeats` + `selectScoredBeats`) — composite score per beat: onset proximity ×0.4, energy level ×0.35, energy delta ×0.25. Within a [minGap, minGap+2s] window, pick the highest-scored beat instead of greedy first-past-gap. Populates `AnalysisResult.beats` and drives `sectionTimings`.
+5. **Energy-based sections** (`detectSections`) — RMS curve at 0.5s hop / 1.0s window, classify as low/medium/high by thirds of the min-max range, merge consecutive same-level windows, filter sections shorter than 1.5s, consolidate adjacent same-energy sections. Returns single medium section when RMS range is below epsilon (0.01) to suppress noise on uniform-energy input (click tracks). Populates `AnalysisResult.sections`.
+6. **Scored beat selection** (`scoreBeats` + `selectScoredBeats`) — composite score per beat: onset proximity ×0.4, energy level ×0.35, energy delta ×0.25. Within a [minGap, minGap+2s] window, pick the highest-scored beat instead of greedy first-past-gap. Populates `AnalysisResult.beats` and drives `sectionTimings`. Retained as fallback when `minSegmentDuration` is explicitly set (backward compat).
+7. **Style-driven pacing** (`resolveMinGap` + `selectScoredBeatsBySection`) — `MixStyle` ('chill' | 'relaxed' | 'balanced' | 'energetic' | 'hyperkinetic') × section energy ('low' | 'medium' | 'high') maps to a concrete minGap via a 5×3 table (12.0s for chill/low down to 0.35s for hyperkinetic/high). `selectScoredBeatsBySection` uses each beat's section energy to resolve minGap locally — tight cuts during drops, wide gaps during breakdowns. Lookahead scales with minGap (`max(0.5s, minGap × 0.4)`). Default style is 'balanced' when `MixStyle` is absent. Explicit `minSegmentDuration` overrides style-driven pacing entirely.
 
 Falls back to fixed-interval timing if beat detection fails. Onset/energy/section fields are absent in fallback mode.
 
 ### Planned (not yet designed in detail)
 
-7. **Frequency band energy** (`EnergyBand`) — distinguish bass drops from hi-hat rolls. Bass energy drives cut timing; treble energy could influence transition speed.
-8. **Bar/phrase awareness** — infer bar boundaries from BPM (groups of 4 beats). Prefer downbeats for cuts. In calmer styles, cut only on bar/phrase boundaries.
-9. **Silence/drop detection** — detect near-silence moments (RMS below threshold for >0.3s). Special treatment: hold a single shot during silence, trigger cut at energy spike.
-
-### Style-driven pacing
-
-Cut pacing is controlled by a mix style parameter (part of `MixJobConfig` / presets). The audio analysis provides information; the style controls how aggressively the pipeline reacts to it. Spectrum from minimal cuts (near-playthrough) to hyperkinetic (sub-beat cuts on every onset). Energy sections modulate the base pacing: high-energy sections get denser cuts, low-energy sections get sparser cuts, scaled by the style setting.
+8. **Frequency band energy** (`EnergyBand`) — distinguish bass drops from hi-hat rolls. Bass energy drives cut timing; treble energy could influence transition speed.
+9. **Bar/phrase awareness** — infer bar boundaries from BPM (groups of 4 beats). Prefer downbeats for cuts. In calmer styles, cut only on bar/phrase boundaries.
+10. **Silence/drop detection** — detect near-silence moments (RMS below threshold for >0.3s). Special treatment: hold a single shot during silence, trigger cut at energy spike.
 
 ### Extension strategy
 
@@ -152,7 +149,7 @@ probe → analyze → plan segments → concat + encode
 
 **ffmpeg strategy:** concat demuxer with `inpoint`/`outpoint` per segment. Single ffmpeg command, no temp video files. Re-encodes output (frame-accurate cuts, handles any input format). Progress parsed from stderr `time=` field.
 
-**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>]`
+**CLI:** `pnpm mix --bgm <path> --videos <path...> --output <path> [--segment-duration <s> | --min-segment <s>] [--style <style>]`
 
 ## Job Runner
 
@@ -233,7 +230,6 @@ Test candidates (as features are built):
 ## Deferred
 
 Designed, not yet implemented:
-- Style-driven pacing — mix style parameter controlling cut density and energy reactivity (see Audio Analysis Pipeline)
 - Visual effects / transitions — ffmpeg xfade, transition type mapped to musical context (hard cut for beats, dissolve for section boundaries, flash frame for drops after silence)
 
 Not yet designed:

@@ -4,6 +4,32 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-26 — Style-driven pacing (Session C)
+
+**Decision:** Style × section energy maps to a concrete minGap via a 5×3 table. `selectScoredBeatsBySection` resolves minGap per beat based on its section, replacing the fixed-minGap approach when `minSegmentDuration` is not explicitly set.
+
+**MIN_GAP_TABLE values:**
+
+| Style / Energy | Low | Medium | High |
+|----------------|-----|--------|------|
+| chill | 12.0 | 8.0 | 5.0 |
+| relaxed | 9.0 | 5.0 | 3.5 |
+| balanced | 5.0 | 3.0 | 1.5 |
+| energetic | 3.0 | 1.5 | 0.75 |
+| hyperkinetic | 1.5 | 0.75 | 0.35 |
+
+**Why these values:** Each style roughly halves the gap from the previous, creating a consistent doubling of cut density. Energy modulates within a ~2-3x range per style. Constraints: chill never sub-second (min 5.0s), hyperkinetic never 10s+ (max 1.5s). Validated on 5 test tracks — chill produces ~12-30 segments for a 3-min song, hyperkinetic produces ~96-249.
+
+**LOOKAHEAD_RATIO (0.4) and MIN_LOOKAHEAD (0.5s):** Lookahead window scales with minGap: `max(0.5s, minGap × 0.4)`. For fast cuts (hyperkinetic/high, minGap 0.35s), 0.5s floor searches ~1 extra beat — keeps cuts snappy. For slow holds (chill/low, minGap 12s), 4.8s window gives enough range to find the best beat without waiting indefinitely. The fixed 2.0s lookahead from `selectScoredBeats` was wrong for both extremes — too wide for hyperkinetic (defeats the purpose of sub-second cuts), too narrow for chill (12s hold with 2s search range is proportionally tiny).
+
+**MIN_RMS_RANGE (0.01):** `detectSections` now returns a single medium section when `maxRms - minRms < 0.01`, suppressing noise on uniform-energy input. Additionally, a consolidation pass merges adjacent same-energy sections that arise when short sections are absorbed into predecessors during the merge step. These two fixes together resolved click track section noise (140bpm track went from 60 spurious sections to 1).
+
+**Eligibility check in lookahead:** Beats in the lookahead window that cross into a different-energy section must satisfy that section's minGap — a high-scored beat in a quiet breakdown won't be selected just because it's near a loud section. This prevents the algorithm from placing cuts where the style says "hold."
+
+**Backward compatibility:** Explicit `minSegmentDuration` (CLI `--min-segment`) bypasses style-driven pacing entirely, using the fixed-minGap `selectScoredBeats` path from Session B. Default style is 'balanced' when `MixStyle` is absent from config.
+
+---
+
 ## 2026-06-26 — Scoring pipeline implementation constants
 
 **Decision:** Specific values chosen for the scoring pipeline:

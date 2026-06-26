@@ -10,7 +10,7 @@
 - [PMV_Generator reference](project_reference-pmv-generator.md) — what mixer kept/dropped from the Python predecessor
 - [UI wiring](project_ui-wiring.md) — implemented: main-process job runner wires UI to pipeline
 - [BPM analysis](project_bpm-analysis.md) — implemented: essentia.js beat detection in Node.js with configurable min gap
-- [Audio analysis design](project_audio-analysis-design.md) — Sessions A–B done (types, detection, scoring pipeline wired). Sessions C–D remaining.
+- [Audio analysis design](project_audio-analysis-design.md) — Sessions A–C done (types, detection, scoring, style-driven pacing). Session D remaining.
 - [QoL sprint](project_qol-sprint.md) — complete: all 4 items done (vestigial IPC, stale docs, retry, push progress)
 - [Parallel encoding](project_parallel-encoding.md) — idea: split single jobs into N parallel ffmpeg chunks for faster encoding
 
