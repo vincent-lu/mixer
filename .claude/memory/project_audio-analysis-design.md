@@ -1,6 +1,6 @@
 ---
 name: project-audio-analysis-design
-description: "Multi-layer audio analysis — all 4 sessions complete (types, detection, scoring, style-driven pacing, transitions, clip effects)."
+description: "Multi-layer audio analysis — all sessions complete (types, detection, scoring, style-driven pacing, transitions, clip effects, frenetic/chaos styles + configurable lookahead)."
 metadata: 
   node_type: memory
   type: project
@@ -21,8 +21,8 @@ Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-an
 - Validation results: real songs get 14-16% fewer cuts than greedy, placed at musically stronger beats
 
 **Session C (done):** Style-driven pacing in `analyze.ts`:
-- `resolveMinGap(style, energy)` — 5×3 mapping table (12.0s chill/low → 0.35s hyperkinetic/high)
-- `selectScoredBeatsBySection(beats, sections, style, bgmDuration)` — per-beat section lookup, scaled lookahead (`max(0.5s, minGap × 0.4)`), eligibility check in lookahead for cross-section filtering
+- `resolveMinGap(style, energy)` — 7×3 mapping table (12.0s chill/low → 0.12s chaos/high)
+- `selectScoredBeatsBySection(beats, sections, style, bgmDuration, lookahead?)` — per-beat section lookup, per-style default lookahead (`DEFAULT_STYLE_LOOKAHEAD` in `shared/types.ts`), effective window `max(lookahead, minGap × 0.4)`, 0-lookahead greedy fast path, eligibility check for cross-section filtering
 - `detectSections` fixed: MIN_RMS_RANGE epsilon (0.01) + same-energy consolidation pass for click track noise
 - `analyzeBgm()` branches: explicit `minSegmentDuration` → fixed minGap (backward compat), otherwise → style-driven (default 'balanced')
 - Wired through `PipelineOptions`, `runner.ts`, CLI `--style` flag
@@ -31,7 +31,7 @@ Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-an
 **Session D (done, then overhauled twice):** Transition system — originally density/palette based, now density + single effect type:
 - `assignTransitions(plan, analysis, density, effect, style)` in `transitions.ts` — worthiness scoring (section boundary 1.0, top-quartile beat 0.6, regular 0.2), top density% get transitions
 - `TransitionEffect` type: 'cut' | 'circleopen' | 'fadewhite' | 'horzopen' | 'vertopen' | 'acid' | 'doublevision' | 'solarize' | 'strobe' | 'strobe_white'. One type per mix (no randomization). Custom transitions use `xfade=transition=custom:expr=...`
-- Per-type fixed durations (0.6–1.2s base) scaled by MixStyle (chill ×1.5 → hyperkinetic ×0.5)
+- Per-type fixed durations (0.6–1.2s base) scaled by MixStyle (chill ×1.5 → chaos ×0.2)
 - Flash frames preserved as special case for extreme energy spikes (0.06s)
 - Dual-path preserved: effect 'cut' or density 0 → concat demuxer (fast path); otherwise → filter_complex
 - Old `TransitionPalette` (4 cumulative tiers) removed — replaced by explicit `TransitionEffect`
@@ -42,6 +42,8 @@ Multi-layer audio analysis design, agreed 2026-06-26. Builds on [[project-bpm-an
 - Effects append ffmpeg filter chains after trim→setpts→settb. Chromatic uses multi-stream split/blend with unique labels per segment
 - Effects compose independently with transitions. Presence of effects triggers filter_complex path (with padded all-cuts transitions if no transitions assigned)
 
-**Post-sprint UI wiring (done, updated):** Mix Style dropdown, Transition Effect dropdown (10 types), Transition Density slider (hidden when Cut), Clip Effect dropdown (12 types), Effect Chance slider (hidden when None, defaults to 50% on first effect selection). CLI: `--transition-density N`, `--transition-effect <name>`, `--clip-effect <name>`, `--effect-chance N`, `--no-transitions` as shorthand. BGM file picker accepts video files. Output dir persisted. Default concurrency 1.
+**Frenetic/chaos styles + configurable lookahead (done):** Two faster mix styles added — `frenetic` (0.2–0.75s gaps, 0.1s lookahead) and `chaos` (0.12–0.35s gaps, 0.0s lookahead = greedy). Per-style default lookahead table (`DEFAULT_STYLE_LOOKAHEAD` in `shared/types.ts`, single source of truth): chill 1.0s → chaos 0.0s. At 0.0s, `selectScoredBeatsBySection` takes the first eligible beat with no window scanning. `lookahead` field on `MixJobConfig` + UI (auto-set per style, user can override) + CLI `--lookahead`. MixStyle `STYLE_DURATION_SCALE` extended for frenetic (×0.35) and chaos (×0.2).
+
+**Post-sprint UI wiring (done, updated):** Mix Style dropdown (7 styles), Lookahead field (auto-set per style, editable), Transition Effect dropdown (10 types), Transition Density slider (hidden when Cut), Clip Effect dropdown (12 types), Effect Chance slider (hidden when None, defaults to 50% on first effect selection). CLI: `--transition-density N`, `--transition-effect <name>`, `--clip-effect <name>`, `--effect-chance N`, `--lookahead <s>`, `--no-transitions` as shorthand. BGM file picker accepts video files. Output dir persisted. Default concurrency 1.
 
 **How to apply:** Detection in `audio.ts`, scoring + selection in `analyze.ts`, transitions in `transitions.ts`, effects in `effects.ts`, filter construction in `filter.ts`, types in `types.ts` + `types.ts` (mixer). Details in `docs/design.md` Audio Analysis Pipeline and Mixing Pipeline sections.
