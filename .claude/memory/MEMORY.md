@@ -14,6 +14,8 @@
 - [BPM analysis](project_bpm-analysis.md) — implemented: essentia.js beat detection in Node.js with configurable min gap
 - [Audio analysis design](project_audio-analysis-design.md) — complete: 4 sessions + transitions + clip effects + frenetic/chaos styles + configurable lookahead
 - [QoL sprint](project_qol-sprint.md) — complete: all 4 items done (vestigial IPC, stale docs, retry, push progress)
+- [Batch mode](project_batch-mode.md) — implemented: folder-based batch job creation with deck-dealing video allocation
+- [Auto style](project_auto-style.md) — implemented: BPM × energy × bias auto-resolves style, transitions, effects
 - [Parallel encoding](project_parallel-encoding.md) — idea: split single jobs into N parallel ffmpeg chunks for faster encoding
 - [Agent mixer](project_agent-mixer.md) — idea: LLM agent auto-selects BGMs + videos and runs mixes via CLI
 
