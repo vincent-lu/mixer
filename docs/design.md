@@ -265,6 +265,16 @@ UI-level batch job creation. Single/Batch toggle in `JobConfig.vue` swaps indivi
 
 **No downstream changes** — each batch job is a regular `MixJob` with a standard `MixJobConfig`. Runner, pipeline, and DB schema are unaware of batch origin.
 
+## Auto Style
+
+When `autoStyle` is enabled on a job config, the pipeline resolves mix style, transitions, and effects from the BGM's BPM and energy profile after analysis. See [`docs/auto-style.md`](auto-style.md) for the full algorithm, mapping table, and examples.
+
+**Config fields:** `autoStyle?: boolean`, `intensityBias?: number` (0.5–2.0, default 1.0).
+
+**Pipeline integration:** `resolveAutoStyle()` in `src/main/mixer/auto-style.ts` runs after audio analysis. Returns concrete `mixStyle`, `lookahead`, `transitionEffect`, `transitionDensity`, `clipEffect`, `effectChance` which override the (ignored) config values for downstream steps.
+
+**UI:** "Auto Style" checkbox after Scene Detection. When checked, hides mix style, lookahead, transition, and clip effect controls. Shows an "Intensity" slider (0.5×–2.0×) to bias toward calmer or more intense styles.
+
 ## Deferred
 
 Not yet designed:

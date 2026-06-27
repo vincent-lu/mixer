@@ -3,17 +3,18 @@ import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { probeVideo } from './probe'
 import { normalizeVideos, DEFAULT_PRESET } from './normalize'
-import { analyzeBgm } from './analyze'
+import { analyzeBgm, selectScoredBeatsBySection } from './analyze'
 import { buildSegmentPlan } from './segments'
 import { buildConcatFileContent, buildFfmpegArgs } from './concat'
 import { runFfmpeg } from './encode'
 import { buildFilterComplexArgs } from './filter'
 import { assignTransitions } from './transitions'
 import { assignEffects } from './effects'
+import { resolveAutoStyle } from './auto-style'
 import type { PipelineOptions, PipelineResult } from './types'
 
 export async function runMixPipeline(options: PipelineOptions): Promise<PipelineResult> {
-  const {
+  let {
     segmentDuration,
     minSegmentDuration,
     mixStyle,
@@ -46,6 +47,24 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
   const analysis = await analyzeBgm(bgmPath, { segmentDuration, minSegmentDuration, mixStyle, lookahead })
 
   onProgress?.('analyzing', 100)
+
+  if (options.autoStyle) {
+    const resolved = resolveAutoStyle(analysis, options.intensityBias)
+    mixStyle = resolved.mixStyle
+    lookahead = resolved.lookahead
+    transitionEffect = resolved.transitionEffect
+    transitionDensity = resolved.transitionDensity
+    clipEffect = resolved.clipEffect
+    effectChance = resolved.effectChance
+
+    if (analysis.beats && analysis.sections && analysis.beats.length > 0) {
+      analysis.sectionTimings = selectScoredBeatsBySection(
+        analysis.beats, analysis.sections, resolved.mixStyle,
+        analysis.bgmDuration, resolved.lookahead,
+      )
+      analysis.sceneCount = analysis.sectionTimings.length - 1
+    }
+  }
 
   const plan = buildSegmentPlan(analysis, normalizedProbes)
 

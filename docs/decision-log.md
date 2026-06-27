@@ -4,6 +4,21 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-27 — Auto style mode
+
+**Decision:** Add automatic style resolution based on BGM analysis (BPM × energy × user intensity bias).
+
+**Context:** Manual style selection requires knowing the BGM's characteristics. Auto mode lets the pipeline decide, especially useful in batch mode where each BGM is different.
+
+**Key choices:**
+- **`autoStyle` boolean flag** rather than adding `'auto'` to `MixStyle`. Keeps the 7 concrete styles unchanged downstream — no guards needed in pacing tables, lookahead maps, etc.
+- **Composite intensity score** = `normalize(BPM) × energyMultiplier × intensityBias`, clamped to 0–1. Energy multiplier derived from duration-weighted section energy (low/medium/high → 0.7/0.9/1.1/1.4×).
+- **User intensity bias slider** (0.5–2.0×, default 1.0) as the escape hatch — most music libraries cluster in 90–150 BPM, so without the bias slider half the style spectrum would never be reached.
+- **Resolution happens after analysis, before segment planning** — the pipeline resolves concrete style/transition/effect values and uses them for all downstream steps. Original config is not mutated.
+- **Full mapping table in `docs/auto-style.md`** — 7 tiers from chill to chaos, each with a transition effect, density, clip effect, and effect chance.
+
+---
+
 ## 2026-06-27 — Batch mode
 
 **Decision:** Add batch job creation as a UI-level concept — no new DB schema or runner changes.

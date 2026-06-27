@@ -41,6 +41,8 @@ const videoFolderPath = ref('')
 const videoFiles = ref<string[]>([])
 const videosPerJob = ref(5)
 const bgmAudioOnly = ref(true)
+const autoStyle = ref(false)
+const intensityBias = ref(1.0)
 
 const canStart = ref(true)
 
@@ -155,6 +157,20 @@ async function pickVideoFolder(): Promise<void> {
   }
 }
 
+function buildStyleConfig(): Partial<MixJobConfig> {
+  if (autoStyle.value) {
+    return { autoStyle: true, intensityBias: intensityBias.value }
+  }
+  return {
+    mixStyle: mixStyle.value,
+    transitionDensity: transitionDensity.value,
+    transitionEffect: transitionEffect.value,
+    clipEffect: clipEffect.value,
+    effectChance: effectChance.value,
+    lookahead: lookahead.value,
+  }
+}
+
 async function generateBatch(): Promise<void> {
   if (!canStartBatch.value) return
   canStart.value = false
@@ -170,12 +186,7 @@ async function generateBatch(): Promise<void> {
         outputFormat: outputFormat.value,
         sceneDetection: sceneDetection.value,
         videoResolution: videoResolution.value,
-        mixStyle: mixStyle.value,
-        transitionDensity: transitionDensity.value,
-        transitionEffect: transitionEffect.value,
-        clipEffect: clipEffect.value,
-        effectChance: effectChance.value,
-        lookahead: lookahead.value,
+        ...buildStyleConfig(),
         outputFilename: bgmName,
       }
       return { name, config }
@@ -197,12 +208,7 @@ async function startMix(): Promise<void> {
       outputFormat: outputFormat.value,
       sceneDetection: sceneDetection.value,
       videoResolution: videoResolution.value,
-      mixStyle: mixStyle.value,
-      transitionDensity: transitionDensity.value,
-      transitionEffect: transitionEffect.value,
-      clipEffect: clipEffect.value,
-      effectChance: effectChance.value,
-      lookahead: lookahead.value,
+      ...buildStyleConfig(),
       outputFilename: outputFilename.value || undefined,
     }
     const name = `Mix — ${outputFilename.value || fileName(bgmPath.value)}`
@@ -351,7 +357,31 @@ async function startMix(): Promise<void> {
         </select>
       </FormRow>
 
-      <FormRow label="Mix Style">
+      <FormRow label="Auto Style">
+        <label class="checkbox-label">
+          <input v-model="autoStyle" type="checkbox" class="checkbox" />
+          <span>Determine style from BGM analysis</span>
+        </label>
+      </FormRow>
+
+      <FormRow v-if="autoStyle" label="Intensity">
+        <div class="density-row">
+          <span class="bias-label">Calmer</span>
+          <input
+            v-model.number="intensityBias"
+            type="range"
+            class="density-slider"
+            min="0.5"
+            max="2.0"
+            step="0.1"
+          />
+          <span class="bias-label">Intense</span>
+          <span class="density-value">{{ intensityBias.toFixed(1) }}×</span>
+        </div>
+        <span class="style-hint">Scales the auto-detected intensity (1.0× = neutral)</span>
+      </FormRow>
+
+      <FormRow v-if="!autoStyle" label="Mix Style">
         <select v-model="mixStyle" class="select" title="Controls how frequently scene cuts happen and how they react to musical energy">
           <option value="chill" title="Long, lingering shots. Cuts every 5–12s depending on energy.">Chill</option>
           <option value="relaxed" title="Gentle pacing. Cuts every 3.5–9s depending on energy.">Relaxed</option>
@@ -364,7 +394,7 @@ async function startMix(): Promise<void> {
         <span class="style-hint">{{ styleHints[mixStyle] }}</span>
       </FormRow>
 
-      <FormRow label="Lookahead">
+      <FormRow v-if="!autoStyle" label="Lookahead">
         <div class="lookahead-row">
           <input
             :value="lookahead"
@@ -380,7 +410,7 @@ async function startMix(): Promise<void> {
         <span class="style-hint">Scoring window past min gap (0 = greedy first-eligible beat)</span>
       </FormRow>
 
-      <FormRow label="Transition Effect">
+      <FormRow v-if="!autoStyle" label="Transition Effect">
         <select v-model="transitionEffect" class="select" title="Visual transition between scenes">
           <option value="cut">Cut (instant switch)</option>
           <option value="circleopen">Circle Open</option>
@@ -395,7 +425,7 @@ async function startMix(): Promise<void> {
         </select>
       </FormRow>
 
-      <FormRow v-if="transitionEffect !== 'cut'" label="Transition Density">
+      <FormRow v-if="!autoStyle && transitionEffect !== 'cut'" label="Transition Density">
         <div class="density-row">
           <input
             v-model.number="transitionDensity"
@@ -410,7 +440,7 @@ async function startMix(): Promise<void> {
         <span class="style-hint">{{ transitionDensity === 0 ? 'Hard cuts only (faster encoding)' : `${transitionDensity}% of cuts get transitions` }}</span>
       </FormRow>
 
-      <FormRow label="Clip Effect">
+      <FormRow v-if="!autoStyle" label="Clip Effect">
         <select v-model="clipEffect" class="select" title="Per-segment visual effect">
           <option value="none">None</option>
           <option value="shake">Shake</option>
@@ -427,7 +457,7 @@ async function startMix(): Promise<void> {
         </select>
       </FormRow>
 
-      <FormRow v-if="clipEffect !== 'none'" label="Effect Chance">
+      <FormRow v-if="!autoStyle && clipEffect !== 'none'" label="Effect Chance">
         <div class="density-row">
           <input
             v-model.number="effectChance"
@@ -525,6 +555,12 @@ async function startMix(): Promise<void> {
 
 .checkbox {
   accent-color: #2563eb;
+}
+
+.bias-label {
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
 .warning-hint {

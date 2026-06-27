@@ -42,6 +42,8 @@ export interface MixJobConfig {
   clipEffect?: ClipEffect
   effectChance?: number
   lookahead?: number
+  autoStyle?: boolean
+  intensityBias?: number
 }
 
 export interface AnalysisResult {
