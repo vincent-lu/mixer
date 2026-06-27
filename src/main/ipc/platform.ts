@@ -69,20 +69,22 @@ export function registerPlatformHandlers(): void {
     'platform:listMediaFiles',
     async (
       _event,
-      input: { dir: string; type: 'video' | 'audio' },
+      input: { dir: string; type: 'video' | 'audio' | 'audio-only' },
     ): Promise<string[]> => {
       const extensions = input.type === 'video'
         ? VIDEO_EXTENSIONS
-        : [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]
+        : input.type === 'audio-only'
+          ? AUDIO_EXTENSIONS
+          : [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]
       try {
-        const entries = await readdir(input.dir, { withFileTypes: true })
+        const entries = await readdir(input.dir, { withFileTypes: true, recursive: true })
         return entries
           .filter((e) => {
             if (!e.isFile()) return false
             const ext = extname(e.name).slice(1).toLowerCase()
             return extensions.includes(ext)
           })
-          .map((e) => join(input.dir, e.name))
+          .map((e) => join(e.parentPath, e.name))
           .sort()
       } catch {
         return []

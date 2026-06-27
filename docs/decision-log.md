@@ -14,7 +14,8 @@ Append-only. Newest first.
 - **Deck-dealing video allocation** over independent random picks per job. Maximizes spread across available videos; only overlaps when forced by the ratio of total draws to available videos.
 - **One job per BGM file** — the BGM folder defines the batch size.
 - **Transactional batch insert** (`createJobs` in `db/jobs.ts`) with single `notifyNewJob()` call, rather than N individual `createJob` calls.
-- **`listMediaFiles` IPC with async `readdir`** — renderer can't access the filesystem; audio type includes video extensions (mirrors `selectAudioFile` behavior for BGM-from-video).
+- **`listMediaFiles` IPC with async recursive `readdir`** — renderer can't access the filesystem; scans subfolders recursively. Three type modes: `'video'` (video extensions), `'audio'` (audio + video, mirrors `selectAudioFile`), `'audio-only'` (audio extensions only, excludes video files from BGM scan).
+- **Audio-only default for batch BGM scan** — checkbox "Audio files only" (default checked) so batch mode doesn't pick up video files as BGM by default. Unchecking allows video-as-BGM (same as single mode behavior).
 - **Batch is UI-only** — no batch metadata table, no batch grouping in the DB. Keeps the data model simple.
 
 ---

@@ -17,7 +17,7 @@ declare global {
       selectDirectory(): Promise<string | null>
       selectVideoFiles(): Promise<string[]>
       selectAudioFile(): Promise<string | null>
-      listMediaFiles(input: { dir: string; type: 'video' | 'audio' }): Promise<string[]>
+      listMediaFiles(input: { dir: string; type: 'video' | 'audio' | 'audio-only' }): Promise<string[]>
       ffmpegVersion(): Promise<{ ffmpeg: string; ffprobe: string }>
       openPath(path: string): Promise<string>
       showItemInFolder(path: string): Promise<void>

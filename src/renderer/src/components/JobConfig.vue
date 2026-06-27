@@ -40,6 +40,7 @@ const bgmFiles = ref<string[]>([])
 const videoFolderPath = ref('')
 const videoFiles = ref<string[]>([])
 const videosPerJob = ref(5)
+const bgmAudioOnly = ref(true)
 
 const canStart = ref(true)
 
@@ -78,7 +79,12 @@ watch(batchMode, (isBatch) => {
     videoFolderPath.value = ''
     videoFiles.value = []
     videosPerJob.value = 5
+    bgmAudioOnly.value = true
   }
+})
+
+watch(bgmAudioOnly, async () => {
+  await scanBgmFolder()
 })
 
 watch(clipEffect, (val, oldVal) => {
@@ -125,11 +131,19 @@ function fileName(path: string): string {
   return path.split(/[/\\]/).pop() ?? path
 }
 
+async function scanBgmFolder(): Promise<void> {
+  if (!bgmFolderPath.value) return
+  bgmFiles.value = await platform.listMediaFiles({
+    dir: bgmFolderPath.value,
+    type: bgmAudioOnly.value ? 'audio-only' : 'audio',
+  })
+}
+
 async function pickBgmFolder(): Promise<void> {
   const dir = await platform.selectDirectory()
   if (dir) {
     bgmFolderPath.value = dir
-    bgmFiles.value = await platform.listMediaFiles({ dir, type: 'audio' })
+    await scanBgmFolder()
   }
 }
 
@@ -239,6 +253,10 @@ async function startMix(): Promise<void> {
           <span class="file-path">{{ bgmFolderPath || 'No folder selected' }}</span>
           <span v-if="bgmFolderPath" class="file-count">{{ bgmFiles.length }} file{{ bgmFiles.length !== 1 ? 's' : '' }}</span>
         </div>
+        <label class="checkbox-label">
+          <input v-model="bgmAudioOnly" type="checkbox" class="checkbox" />
+          <span>Audio files only</span>
+        </label>
         <span v-if="bgmFolderPath && bgmFiles.length === 0" class="warning-hint">No audio files found in this folder</span>
       </FormRow>
 
@@ -494,6 +512,19 @@ async function startMix(): Promise<void> {
   padding: 2px 8px;
   border-radius: 10px;
   white-space: nowrap;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.checkbox {
+  accent-color: #2563eb;
 }
 
 .warning-hint {

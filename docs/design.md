@@ -260,7 +260,7 @@ UI-level batch job creation. Single/Batch toggle in `JobConfig.vue` swaps indivi
 **Job naming:** `Mix — {bgm_basename} #{position}` (1-indexed in batch order).
 
 **IPC:**
-- `platform:listMediaFiles({ dir, type })` — async `readdir` + extension filter. Type `'video'` uses video extensions; type `'audio'` uses audio + video extensions (mirrors `selectAudioFile` — BGM can be sourced from video files).
+- `platform:listMediaFiles({ dir, type })` — async recursive `readdir` + extension filter, traverses subfolders. Type `'video'` uses video extensions; type `'audio'` uses audio + video extensions (mirrors `selectAudioFile` — BGM can be sourced from video files); type `'audio-only'` uses audio extensions only (default in batch mode via "Audio files only" checkbox).
 - `jobs:create-batch` — transactional multi-insert via `createJobs()`, single `notifyNewJob()` call.
 
 **No downstream changes** — each batch job is a regular `MixJob` with a standard `MixJobConfig`. Runner, pipeline, and DB schema are unaware of batch origin.

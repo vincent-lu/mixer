@@ -15,7 +15,7 @@ const api = {
   selectDirectory: (): Promise<string | null> => ipcRenderer.invoke('platform:selectDirectory'),
   selectVideoFiles: (): Promise<string[]> => ipcRenderer.invoke('platform:selectVideoFiles'),
   selectAudioFile: (): Promise<string | null> => ipcRenderer.invoke('platform:selectAudioFile'),
-  listMediaFiles: (input: { dir: string; type: 'video' | 'audio' }): Promise<string[]> =>
+  listMediaFiles: (input: { dir: string; type: 'video' | 'audio' | 'audio-only' }): Promise<string[]> =>
     ipcRenderer.invoke('platform:listMediaFiles', input),
   ffmpegVersion: (): Promise<{ ffmpeg: string; ffprobe: string }> =>
     ipcRenderer.invoke('platform:ffmpegVersion'),
