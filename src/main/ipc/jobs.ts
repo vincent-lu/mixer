@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import type { MixJob, MixJobConfig } from '../../shared/types'
 import { createJob, createJobs, deleteJob, getJob, listJobs, retryJob } from '../db/jobs'
-import { cancelRunningJob, notifyNewJob } from '../runner'
+import { cancelRunningJob, isQueuePaused, notifyNewJob, setQueuePaused } from '../runner'
 
 export function registerJobsHandlers(): void {
   ipcMain.handle('jobs:list', async (): Promise<MixJob[]> => {
@@ -44,5 +44,13 @@ export function registerJobsHandlers(): void {
 
   ipcMain.handle('jobs:delete', async (_event, id: number): Promise<void> => {
     deleteJob(id)
+  })
+
+  ipcMain.handle('jobs:set-paused', async (_event, value: boolean): Promise<void> => {
+    setQueuePaused(value)
+  })
+
+  ipcMain.handle('jobs:is-paused', async (): Promise<boolean> => {
+    return isQueuePaused()
   })
 }

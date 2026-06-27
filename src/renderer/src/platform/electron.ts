@@ -17,6 +17,8 @@ export const electronPlatform: Platform = {
   retryJob: (id) => window.api.retryJob(id),
   cancelJob: (id) => window.api.cancelJob(id),
   deleteJob: (id) => window.api.deleteJob(id),
+  setQueuePaused: (value) => window.api.setQueuePaused(value),
+  isQueuePaused: () => window.api.isQueuePaused(),
 
   onJobProgress: (callback) => window.api.onJobProgress(callback),
   onJobStatusChange: (callback) => window.api.onJobStatusChange(callback),

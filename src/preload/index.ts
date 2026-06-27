@@ -33,6 +33,8 @@ const api = {
   retryJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:retry', id),
   cancelJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:cancel', id),
   deleteJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:delete', id),
+  setQueuePaused: (value: boolean): Promise<void> => ipcRenderer.invoke('jobs:set-paused', value),
+  isQueuePaused: (): Promise<boolean> => ipcRenderer.invoke('jobs:is-paused'),
 
   // Job events (push from runner)
   onJobProgress: (

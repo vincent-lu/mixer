@@ -25,6 +25,8 @@ export interface Platform {
   retryJob(id: number): Promise<void>
   cancelJob(id: number): Promise<void>
   deleteJob(id: number): Promise<void>
+  setQueuePaused(value: boolean): Promise<void>
+  isQueuePaused(): Promise<boolean>
 
   onJobProgress(
     callback: (data: { id: number; progress: number; stage: ProgressStage }) => void,

@@ -78,9 +78,9 @@ describe('buildFilterComplexArgs', () => {
     const transitions = [CUT, xfade('fade', 0.4)]
     const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4')
 
-    expect(filterScript).toContain('[0:v]trim=start=0:duration=4,setpts=PTS-STARTPTS,settb=AVTB,setsar=1[v0]')
-    expect(filterScript).toContain('trim=start=2:duration=4.4,setpts=PTS-STARTPTS,settb=AVTB,setsar=1[v1]')
-    expect(filterScript).toContain('trim=start=4:duration=4,setpts=PTS-STARTPTS,settb=AVTB,setsar=1[v2]')
+    expect(filterScript).toContain('[0:v]trim=start=0:duration=4,setpts=PTS-STARTPTS,settb=AVTB,fps=30,setsar=1[v0]')
+    expect(filterScript).toContain('trim=start=2:duration=4.4,setpts=PTS-STARTPTS,settb=AVTB,fps=30,setsar=1[v1]')
+    expect(filterScript).toContain('trim=start=4:duration=4,setpts=PTS-STARTPTS,settb=AVTB,fps=30,setsar=1[v2]')
   })
 
   it('groups consecutive cuts with concat filter', () => {
@@ -151,8 +151,8 @@ describe('buildFilterComplexArgs', () => {
     const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4', effects)
 
     expect(filterScript).toContain('setsar=1,hue=h=t*90[v1]')
-    expect(filterScript).toContain('settb=AVTB,setsar=1[v0]')
-    expect(filterScript).toContain('settb=AVTB,setsar=1[v2]')
+    expect(filterScript).toContain('settb=AVTB,fps=30,setsar=1[v0]')
+    expect(filterScript).toContain('settb=AVTB,fps=30,setsar=1[v2]')
   })
 
   it('handles chromatic multi-stream effect', () => {
@@ -164,7 +164,7 @@ describe('buildFilterComplexArgs', () => {
     expect(filterScript).toContain('split=3[cr0][cg0][cb0]')
     expect(filterScript).toContain('[cr0]lutrgb=g=0:b=0')
     expect(filterScript).toContain('blend=all_mode=addition[v0]')
-    expect(filterScript).toContain('settb=AVTB,setsar=1[v1]')
+    expect(filterScript).toContain('settb=AVTB,fps=30,setsar=1[v1]')
   })
 
   it('composes effects with transitions', () => {

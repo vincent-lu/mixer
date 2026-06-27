@@ -10,6 +10,7 @@ function ipcClone<T>(value: T): T {
 export const useJobsStore = defineStore('jobs', () => {
   const jobs = ref<MixJob[]>([])
   const loading = ref(false)
+  const queuePaused = ref(false)
 
   const unsubs: Array<() => void> = []
 
@@ -29,10 +30,21 @@ export const useJobsStore = defineStore('jobs', () => {
     loading.value = true
     try {
       jobs.value = await platform.listJobs()
+      queuePaused.value = await platform.isQueuePaused()
     } catch (e) {
       console.error('[jobs] load failed:', e)
     } finally {
       loading.value = false
+    }
+  }
+
+  async function togglePaused(): Promise<void> {
+    const next = !queuePaused.value
+    try {
+      await platform.setQueuePaused(next)
+      queuePaused.value = next
+    } catch (e) {
+      console.error('[jobs] togglePaused failed:', e)
     }
   }
 
@@ -116,6 +128,7 @@ export const useJobsStore = defineStore('jobs', () => {
   return {
     jobs,
     loading,
+    queuePaused,
     activeJobs,
     pendingJobs,
     completedJobs,
@@ -125,6 +138,7 @@ export const useJobsStore = defineStore('jobs', () => {
     cancel,
     retry,
     remove,
+    togglePaused,
     subscribe,
     unsubscribe,
   }

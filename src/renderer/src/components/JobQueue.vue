@@ -6,7 +6,7 @@ import { platform } from '@renderer/platform'
 import type { MixJob, MixJobStatus } from '@renderer/platform'
 
 const store = useJobsStore()
-const { jobs, loading } = storeToRefs(store)
+const { jobs, loading, queuePaused } = storeToRefs(store)
 
 const now = ref(Date.now())
 let tickTimer: ReturnType<typeof setInterval> | null = null
@@ -101,7 +101,13 @@ function showOutput(path: string): void {
 
 <template>
   <div class="queue-root">
-    <h2 class="text-lg font-semibold mb-4">Job Queue</h2>
+    <div class="queue-header">
+      <h2 class="text-lg font-semibold">Job Queue</h2>
+      <button class="pause-btn" :class="{ paused: queuePaused }" @click="store.togglePaused()">
+        <FaIcon :icon="['fasr', queuePaused ? 'play' : 'pause']" />
+        <span>{{ queuePaused ? 'Resume' : 'Pause' }}</span>
+      </button>
+    </div>
 
     <div v-if="loading && jobs.length === 0" class="empty-state">Loading...</div>
     <div v-else-if="jobs.length === 0" class="empty-state">No jobs yet</div>
@@ -174,6 +180,36 @@ function showOutput(path: string): void {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.pause-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pause-btn:hover {
+  background: #374151;
+  color: #d1d5db;
+}
+
+.pause-btn.paused {
+  border-color: #2563eb;
+  color: #60a5fa;
 }
 
 .empty-state {

@@ -152,7 +152,7 @@ probe → normalize → analyze → plan segments → assign transitions → ass
 
 **Dual-path ffmpeg strategy:**
 - **Concat demuxer** (fast path): when all transitions are hard cuts AND no clip effects assigned. `inpoint`/`outpoint` per segment, single ffmpeg command, no temp files.
-- **filter_complex** (transition/effects path): when any non-cut transitions or clip effects are present. One `-i` per segment with `-ss` seeking, `trim`+`setpts`+`settb=AVTB`+optional effect chain per segment, grouped `concat` for consecutive hard cuts, `xfade` (built-in or custom expression) for transitions, `fade`+`concat` for flash frames. Single ffmpeg command, single encoding pass.
+- **filter_complex** (transition/effects path): when any non-cut transitions or clip effects are present. One `-i` per segment with `-ss` seeking, `trim`+`setpts`+`settb=AVTB`+`fps={preset}`+optional effect chain per segment, grouped `concat` for consecutive hard cuts, `xfade` (built-in or custom expression) for transitions, `fade`+`concat` for flash frames. Single ffmpeg command, single encoding pass.
 
 **Transition system:** `transitionEffect` selects ONE transition type for the entire mix ('cut' | 'circleopen' | 'fadewhite' | 'horzopen' | 'vertopen' | 'acid' | 'doublevision' | 'solarize' | 'strobe' | 'strobe_white'). `transitionDensity` (0–100, default 30) controls what percentage of switch points get that transition. When `transitionEffect` is 'cut' or density is 0, all switches are hard cuts → concat demuxer fast path. Custom transitions (acid, doublevision, solarize, strobe, strobe_white) use `xfade=transition=custom:expr=...`.
 
@@ -183,6 +183,8 @@ Main-process job runner in `src/main/runner.ts`. Bridges UI job creation to the 
 **Cancellation:** `AbortController` per running job, stored in `Map<number, AbortController>`. Cancel from UI → `cancelRunningJob(id)` → `controller.abort()` → pipeline exits → catch handler marks job cancelled.
 
 **Startup recovery:** Jobs stuck in `analyzing`/`mixing` from a prior crash are marked `failed`. Pending jobs are picked up automatically.
+
+**Pause:** `setQueuePaused(true)` prevents `processQueue` from picking up new pending jobs. Active jobs run to completion. `setQueuePaused(false)` resumes and triggers `processQueue`. State is ephemeral (resets on app restart). UI toggle in the Job Queue header.
 
 **Shutdown:** `stopRunner()` sets a `stopped` flag (prevents `processQueue` re-entry), aborts all controllers, clears the map.
 
@@ -221,20 +223,22 @@ Two-panel layout, no router:
 
 ```
 ┌──────────────────────────┬────────────────┐
-│   Job Configuration      │   Job Queue    │
+│   Job Configuration      │  Job Queue [⏸] │
 │                          │                │
 │  BGM: [Select file]      │  ┌──────────┐ │
 │  Videos: [Add files]     │  │ Mix — X   │ │
 │  Output: [Select folder] │  │ ■■■■░ 60% │ │
-│  Format: [MP4 ▼]         │  └──────────┘ │
-│  Resolution: [1080p ▼]   │  ┌──────────┐ │
-│  Scene detect: [Random ▼]│  │ Mix — Y   │ │
+│  Scene detect: [Random ▼]│  └──────────┘ │
+│  Auto style: [☑]         │  ┌──────────┐ │
+│  Intensity: [====•===]   │  │ Mix — Y   │ │
 │                          │  │ ✓ Done    │ │
 │  [Start Mix]             │  └──────────┘ │
 │                          │                │
 │  (2/3 width)             │  (1/3 width)  │
 └──────────────────────────┴────────────────┘
 ```
+
+Output format is always MP4, video resolution always 1080p (not user-configurable).
 
 ## Testing Strategy
 

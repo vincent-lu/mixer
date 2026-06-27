@@ -1,4 +1,5 @@
 import type { SegmentPlan, TransitionAssignment } from './types'
+import { DEFAULT_PRESET } from './normalize'
 import { CUSTOM_TRANSITION_EXPRS, FLASH_FADE_DURATION } from './transitions'
 import type { TransitionEffect } from '@shared/types'
 import type { EffectAssignment } from './effects'
@@ -101,7 +102,7 @@ export function buildFilterComplexArgs(
       inputLabel = `[${inputIdx}:v]`
     }
 
-    const baseChain = `${inputLabel}trim=start=${seg.inpoint}:duration=${dur},setpts=PTS-STARTPTS,settb=AVTB,setsar=1`
+    const baseChain = `${inputLabel}trim=start=${seg.inpoint}:duration=${dur},setpts=PTS-STARTPTS,settb=AVTB,fps=${DEFAULT_PRESET.fps},setsar=1`
     const effect = effectMap.get(i)
     const effectChain = effect ? getEffectChain(effect, i) : null
     if (effectChain) {

@@ -30,6 +30,8 @@ declare global {
       retryJob(id: number): Promise<void>
       cancelJob(id: number): Promise<void>
       deleteJob(id: number): Promise<void>
+      setQueuePaused(value: boolean): Promise<void>
+      isQueuePaused(): Promise<boolean>
 
       // Job events (push from runner)
       onJobProgress(

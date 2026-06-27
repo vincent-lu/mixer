@@ -14,6 +14,7 @@ function broadcast(channel: string, ...args: unknown[]): void {
 
 const running = new Map<number, AbortController>()
 let stopped = false
+let paused = false
 
 export function startRunner(): void {
   const all = listJobs()
@@ -37,6 +38,15 @@ export function notifyNewJob(): void {
   processQueue()
 }
 
+export function setQueuePaused(value: boolean): void {
+  paused = value
+  if (!paused) processQueue()
+}
+
+export function isQueuePaused(): boolean {
+  return paused
+}
+
 export function cancelRunningJob(id: number): void {
   const controller = running.get(id)
   if (controller) {
@@ -47,7 +57,7 @@ export function cancelRunningJob(id: number): void {
 }
 
 function processQueue(): void {
-  if (stopped) return
+  if (stopped || paused) return
   const { maxConcurrency } = getAppSettings()
   const available = maxConcurrency - running.size
   if (available <= 0) return
@@ -123,7 +133,7 @@ function buildOutputPath(job: MixJob): string {
     ? job.config.outputFilename.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim()
     : job.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim()
   const sanitized = baseName || 'mix'
-  const ext = job.config.outputFormat
+  const ext = job.config.outputFormat ?? 'mp4'
   const dir = job.config.outputDir
 
   let candidate = join(dir, `${sanitized}.${ext}`)

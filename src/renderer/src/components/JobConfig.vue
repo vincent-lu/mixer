@@ -22,8 +22,6 @@ const styleHints: Record<NonNullable<MixJobConfig['mixStyle']>, string> = {
 const bgmPath = ref('')
 const sourceVideoPaths = ref<string[]>([])
 const outputDir = ref('')
-const outputFormat = ref<MixJobConfig['outputFormat']>('mp4')
-const videoResolution = ref<MixJobConfig['videoResolution']>('1080p')
 const sceneDetection = ref<MixJobConfig['sceneDetection']>('random')
 const mixStyle = ref<NonNullable<MixJobConfig['mixStyle']>>('balanced')
 const transitionDensity = ref(30)
@@ -183,9 +181,9 @@ async function generateBatch(): Promise<void> {
         bgmPath: bgm,
         sourceVideoPaths: allocated[i]!,
         outputDir: outputDir.value,
-        outputFormat: outputFormat.value,
+        outputFormat: 'mp4',
         sceneDetection: sceneDetection.value,
-        videoResolution: videoResolution.value,
+        videoResolution: '1080p',
         ...buildStyleConfig(),
         outputFilename: bgmName,
       }
@@ -205,9 +203,9 @@ async function startMix(): Promise<void> {
       bgmPath: bgmPath.value,
       sourceVideoPaths: [...sourceVideoPaths.value],
       outputDir: outputDir.value,
-      outputFormat: outputFormat.value,
+      outputFormat: 'mp4',
       sceneDetection: sceneDetection.value,
-      videoResolution: videoResolution.value,
+      videoResolution: '1080p',
       ...buildStyleConfig(),
       outputFilename: outputFilename.value || undefined,
     }
@@ -331,23 +329,6 @@ async function startMix(): Promise<void> {
           class="input filename-input"
           placeholder="Auto-generated from BGM"
         />
-      </FormRow>
-
-      <FormRow label="Output Format">
-        <select v-model="outputFormat" class="select">
-          <option value="mp4">MP4</option>
-          <option value="mkv">MKV</option>
-          <option value="mov">MOV</option>
-        </select>
-      </FormRow>
-
-      <FormRow label="Video Resolution">
-        <select v-model="videoResolution" class="select">
-          <option value="1080p">1080p</option>
-          <option value="720p">720p</option>
-          <option value="480p">480p</option>
-          <option value="source">Source (no re-encode)</option>
-        </select>
       </FormRow>
 
       <FormRow label="Scene Detection">

@@ -4,6 +4,30 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-28 — Always MP4/1080p, remove format/resolution UI
+
+**Decision:** Remove Output Format and Video Resolution dropdowns from the GUI. Always default to MP4 and 1080p.
+
+**Context:** These controls added complexity without real value — the pipeline always normalizes to 1080p/30fps/h264 via `DEFAULT_PRESET`, and `videoResolution` was never wired to the normalization logic. Config fields remain in `MixJobConfig` for backward compatibility but are hardcoded to `'mp4'`/`'1080p'` at creation time.
+
+---
+
+## 2026-06-28 — Pause job queue
+
+**Decision:** Add an ephemeral pause/resume toggle for the job queue runner.
+
+**Context:** During large batch runs, users need to temporarily stop new jobs from starting without cancelling in-flight work. Pause sets an in-memory flag that blocks `processQueue` from picking up pending jobs. Active jobs complete normally. State resets to unpaused on app restart (not persisted).
+
+---
+
+## 2026-06-28 — fps filter in filter_complex chain
+
+**Decision:** Add `fps={DEFAULT_PRESET.fps}` to every segment's filter chain in `filter.ts`, after `settb=AVTB`.
+
+**Context:** `parseFps` in `probe.ts` uses `Math.round()`, so 29.97fps (30000/1001) rounds to 30 and skips normalization. But ffmpeg still sees the actual frame rate, causing xfade to fail with "frame rate do not match." The fps filter forces all segments to exactly 30/1 fps regardless of source metadata.
+
+---
+
 ## 2026-06-27 — Auto style mode
 
 **Decision:** Add automatic style resolution based on BGM analysis (BPM × energy × user intensity bias).
