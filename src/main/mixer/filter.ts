@@ -49,24 +49,59 @@ export function buildFilterComplexArgs(
   effectAssignments: EffectAssignment[] = [],
 ): FilterComplexResult {
   const { segments } = plan
-  const bgmInputIndex = segments.length
+
+  const uniquePaths = [...new Set(segments.map((s) => s.sourcePath))]
+  const pathToInput = new Map(uniquePaths.map((p, i) => [p, i]))
+  const bgmInputIndex = uniquePaths.length
 
   const inputArgs: string[] = ['-y']
-  for (const seg of segments) {
-    inputArgs.push('-ss', String(seg.inpoint), '-i', seg.sourcePath)
+  for (const path of uniquePaths) {
+    inputArgs.push('-i', path)
   }
   inputArgs.push('-i', bgmPath)
 
   const filterParts: string[] = []
 
+  // Count how many times each input is used and assign split labels
+  const inputUseCounts = new Map<number, number>()
+  for (const seg of segments) {
+    const idx = pathToInput.get(seg.sourcePath)!
+    inputUseCounts.set(idx, (inputUseCounts.get(idx) ?? 0) + 1)
+  }
+
+  // Emit split filters for inputs used more than once
+  const inputUseCounters = new Map<number, number>()
+  const splitLabels = new Map<number, string[]>()
+  for (const [inputIdx, count] of inputUseCounts) {
+    if (count > 1) {
+      const labels = Array.from({ length: count }, (_, j) => `s${inputIdx}_${j}`)
+      filterParts.push(`[${inputIdx}:v]split=${count}${labels.map((l) => `[${l}]`).join('')}`)
+      splitLabels.set(inputIdx, labels)
+      inputUseCounters.set(inputIdx, 0)
+    }
+  }
+
   const effectMap = new Map(effectAssignments.map((a) => [a.segmentIndex, a.effect]))
 
   for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]!
+    const inputIdx = pathToInput.get(seg.sourcePath)!
     let dur = segmentDuration(plan, i)
     if (i < transitions.length && isXfade(transitions[i]!)) {
       dur += transitions[i]!.duration
     }
-    const baseChain = `[${i}:v]trim=duration=${dur},setpts=PTS-STARTPTS,settb=AVTB`
+
+    let inputLabel: string
+    const labels = splitLabels.get(inputIdx)
+    if (labels) {
+      const useIdx = inputUseCounters.get(inputIdx)!
+      inputLabel = `[${labels[useIdx]}]`
+      inputUseCounters.set(inputIdx, useIdx + 1)
+    } else {
+      inputLabel = `[${inputIdx}:v]`
+    }
+
+    const baseChain = `${inputLabel}trim=start=${seg.inpoint}:duration=${dur},setpts=PTS-STARTPTS,settb=AVTB`
     const effect = effectMap.get(i)
     const effectChain = effect ? getEffectChain(effect, i) : null
     if (effectChain) {

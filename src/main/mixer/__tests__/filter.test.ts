@@ -27,13 +27,14 @@ function flash(): TransitionAssignment {
 }
 
 describe('buildFilterComplexArgs', () => {
-  it('includes correct number of inputs', () => {
+  it('deduplicates input files', () => {
     const plan = makePlan(4, 3)
     const transitions = [CUT, xfade('wipeleft', 0.5), CUT]
     const { inputArgs } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4')
 
     const inputCount = inputArgs.filter((a) => a === '-i').length
-    expect(inputCount).toBe(5)
+    expect(inputCount).toBe(4)
+    expect(inputArgs).not.toContain('-ss')
   })
 
   it('places output path last in outputArgs', () => {
@@ -69,17 +70,17 @@ describe('buildFilterComplexArgs', () => {
       return acc
     }, [])
     expect(mapIndices.length).toBe(2)
-    expect(outputArgs[mapIndices[1]! + 1]).toBe('5:a:0')
+    expect(outputArgs[mapIndices[1]! + 1]).toBe('3:a:0')
   })
 
-  it('contains trim and setpts for each segment in filterScript', () => {
+  it('uses trim=start for seeking in filter script', () => {
     const plan = makePlan(3, 4)
     const transitions = [CUT, xfade('fade', 0.4)]
     const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4')
 
-    expect(filterScript).toContain('[0:v]trim=duration=4,setpts=PTS-STARTPTS,settb=AVTB[v0]')
-    expect(filterScript).toContain('[1:v]trim=duration=4.4,setpts=PTS-STARTPTS,settb=AVTB[v1]')
-    expect(filterScript).toContain('[2:v]trim=duration=4,setpts=PTS-STARTPTS,settb=AVTB[v2]')
+    expect(filterScript).toContain('[0:v]trim=start=0:duration=4,setpts=PTS-STARTPTS,settb=AVTB[v0]')
+    expect(filterScript).toContain('trim=start=2:duration=4.4,setpts=PTS-STARTPTS,settb=AVTB[v1]')
+    expect(filterScript).toContain('trim=start=4:duration=4,setpts=PTS-STARTPTS,settb=AVTB[v2]')
   })
 
   it('groups consecutive cuts with concat filter', () => {
@@ -96,7 +97,7 @@ describe('buildFilterComplexArgs', () => {
     const transitions = [xfade('circleopen', 0.7)]
     const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4')
 
-    expect(filterScript).toContain('[0:v]trim=duration=5.7,setpts=PTS-STARTPTS,settb=AVTB[v0]')
+    expect(filterScript).toMatch(/trim=start=0:duration=5\.7/)
     expect(filterScript).toMatch(/xfade=transition=circleopen:duration=0\.7:offset=5\.0/)
   })
 
@@ -105,7 +106,7 @@ describe('buildFilterComplexArgs', () => {
     const transitions = [xfade('fade', 0.4)]
     const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4')
 
-    expect(filterScript).toContain('[0:v]trim=duration=5.4,setpts=PTS-STARTPTS,settb=AVTB[v0]')
+    expect(filterScript).toMatch(/trim=start=0:duration=5\.4/)
     expect(filterScript).toMatch(/xfade=transition=fade:duration=0\.4:offset=5\.0/)
   })
 
@@ -131,19 +132,16 @@ describe('buildFilterComplexArgs', () => {
     expect(filterScript).toContain('[v2][v3]concat=n=2:v=1:a=0')
   })
 
-  it('uses -ss for input seeking', () => {
-    const plan = makePlan(3, 4)
-    plan.segments[1]!.inpoint = 10
-    plan.segments[1]!.outpoint = 14
-    const transitions = [xfade('fade', 0.4), CUT]
-    const { inputArgs } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4')
+  it('emits split filter for deduplicated inputs and references correct labels', () => {
+    const plan = makePlan(4, 3)
+    const transitions = [CUT, xfade('wipeleft', 0.5), CUT]
+    const { filterScript, inputArgs } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4')
 
-    const ssIndices = inputArgs.reduce<number[]>((acc, a, i) => {
-      if (a === '-ss') acc.push(i)
-      return acc
-    }, [])
-    expect(ssIndices.length).toBe(3)
-    expect(inputArgs[ssIndices[1]! + 1]).toBe('10')
+    expect(inputArgs.filter((a) => a === '-i').length).toBe(4)
+    expect(filterScript).toContain('[0:v]split=2[s0_0][s0_1]')
+    expect(filterScript).toContain('[s0_0]trim=start=0:duration=3')
+    expect(filterScript).toContain('[s0_1]trim=start=6:duration=3')
+    expect(filterScript).toContain('[1:v]trim=start=2:duration=3')
   })
 
   it('appends simple effect chain to segment', () => {
