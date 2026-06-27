@@ -15,6 +15,8 @@ const api = {
   selectDirectory: (): Promise<string | null> => ipcRenderer.invoke('platform:selectDirectory'),
   selectVideoFiles: (): Promise<string[]> => ipcRenderer.invoke('platform:selectVideoFiles'),
   selectAudioFile: (): Promise<string | null> => ipcRenderer.invoke('platform:selectAudioFile'),
+  listMediaFiles: (input: { dir: string; type: 'video' | 'audio' }): Promise<string[]> =>
+    ipcRenderer.invoke('platform:listMediaFiles', input),
   ffmpegVersion: (): Promise<{ ffmpeg: string; ffprobe: string }> =>
     ipcRenderer.invoke('platform:ffmpegVersion'),
   openPath: (path: string): Promise<string> => ipcRenderer.invoke('platform:openPath', path),
@@ -26,6 +28,8 @@ const api = {
   getJob: (id: number): Promise<MixJob | null> => ipcRenderer.invoke('jobs:get', id),
   createJob: (input: { name: string; config: MixJobConfig }): Promise<MixJob> =>
     ipcRenderer.invoke('jobs:create', input),
+  createBatch: (inputs: Array<{ name: string; config: MixJobConfig }>): Promise<MixJob[]> =>
+    ipcRenderer.invoke('jobs:create-batch', inputs),
   retryJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:retry', id),
   cancelJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:cancel', id),
   deleteJob: (id: number): Promise<void> => ipcRenderer.invoke('jobs:delete', id),

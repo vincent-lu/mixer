@@ -8,6 +8,7 @@ import {
   faStop,
   faTrash,
   faFolder,
+  faFolderMusic,
   faFolderOpen,
   faMusic,
   faFilm,
@@ -16,6 +17,7 @@ import {
   faCircleXmark,
   faSpinner,
   faPlus,
+  faLayerGroup,
 } from '@fortawesome/sharp-regular-svg-icons'
 import App from './App.vue'
 import './assets/main.css'
@@ -26,6 +28,7 @@ library.add(
   faStop,
   faTrash,
   faFolder,
+  faFolderMusic,
   faFolderOpen,
   faMusic,
   faFilm,
@@ -34,6 +37,7 @@ library.add(
   faCircleXmark,
   faSpinner,
   faPlus,
+  faLayerGroup,
 )
 
 const app = createApp(App)

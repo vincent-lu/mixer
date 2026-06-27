@@ -17,6 +17,7 @@ declare global {
       selectDirectory(): Promise<string | null>
       selectVideoFiles(): Promise<string[]>
       selectAudioFile(): Promise<string | null>
+      listMediaFiles(input: { dir: string; type: 'video' | 'audio' }): Promise<string[]>
       ffmpegVersion(): Promise<{ ffmpeg: string; ffprobe: string }>
       openPath(path: string): Promise<string>
       showItemInFolder(path: string): Promise<void>
@@ -25,6 +26,7 @@ declare global {
       listJobs(): Promise<MixJob[]>
       getJob(id: number): Promise<MixJob | null>
       createJob(input: { name: string; config: MixJobConfig }): Promise<MixJob>
+      createBatch(inputs: Array<{ name: string; config: MixJobConfig }>): Promise<MixJob[]>
       retryJob(id: number): Promise<void>
       cancelJob(id: number): Promise<void>
       deleteJob(id: number): Promise<void>

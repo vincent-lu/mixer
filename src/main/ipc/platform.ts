@@ -1,5 +1,10 @@
+import { readdir } from 'node:fs/promises'
+import { extname, join } from 'node:path'
 import { dialog, ipcMain, shell } from 'electron'
 import { validateFfmpeg } from '../ffmpeg/validate'
+
+const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', 'm4v']
+const AUDIO_EXTENSIONS = ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma']
 
 export function registerPlatformHandlers(): void {
   ipcMain.handle('platform:ping', async (): Promise<string> => {
@@ -22,7 +27,7 @@ export function registerPlatformHandlers(): void {
       filters: [
         {
           name: 'Video files',
-          extensions: ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', 'm4v'],
+          extensions: VIDEO_EXTENSIONS,
         },
       ],
     })
@@ -37,7 +42,7 @@ export function registerPlatformHandlers(): void {
       filters: [
         {
           name: 'Audio / Video files',
-          extensions: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma', 'mp4', 'mkv', 'mov', 'avi', 'webm'],
+          extensions: [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS],
         },
       ],
     })
@@ -59,4 +64,29 @@ export function registerPlatformHandlers(): void {
   ipcMain.handle('platform:showItemInFolder', async (_event, path: string): Promise<void> => {
     shell.showItemInFolder(path)
   })
+
+  ipcMain.handle(
+    'platform:listMediaFiles',
+    async (
+      _event,
+      input: { dir: string; type: 'video' | 'audio' },
+    ): Promise<string[]> => {
+      const extensions = input.type === 'video'
+        ? VIDEO_EXTENSIONS
+        : [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]
+      try {
+        const entries = await readdir(input.dir, { withFileTypes: true })
+        return entries
+          .filter((e) => {
+            if (!e.isFile()) return false
+            const ext = extname(e.name).slice(1).toLowerCase()
+            return extensions.includes(ext)
+          })
+          .map((e) => join(input.dir, e.name))
+          .sort()
+      } catch {
+        return []
+      }
+    },
+  )
 }

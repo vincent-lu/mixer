@@ -246,10 +246,28 @@ Test candidates (as features are built):
 - Job state machine transitions
 - Scene selection algorithms
 
+## Batch Mode
+
+UI-level batch job creation. Single/Batch toggle in `JobConfig.vue` swaps individual file pickers for folder pickers.
+
+**Inputs (batch mode):**
+- **BGM folder** — scanned via `platform:listMediaFiles` IPC. One job created per BGM file.
+- **Video folder** — scanned similarly. User sets "Videos per mix" count.
+- All other config (format, resolution, style, transitions, effects, lookahead) shared across batch jobs.
+
+**Video allocation:** Deck-dealing algorithm in `src/renderer/src/batch/allocate.ts`. Builds a repeating shuffled sequence (Fisher-Yates per round), slices into per-job chunks. Maximizes spread — no overlap when total draws <= available videos; even distribution when overlap is forced.
+
+**Job naming:** `Mix — {bgm_basename} #{position}` (1-indexed in batch order).
+
+**IPC:**
+- `platform:listMediaFiles({ dir, type })` — async `readdir` + extension filter. Type `'video'` uses video extensions; type `'audio'` uses audio + video extensions (mirrors `selectAudioFile` — BGM can be sourced from video files).
+- `jobs:create-batch` — transactional multi-insert via `createJobs()`, single `notifyNewJob()` call.
+
+**No downstream changes** — each batch job is a regular `MixJob` with a standard `MixJobConfig`. Runner, pipeline, and DB schema are unaware of batch origin.
+
 ## Deferred
 
 Not yet designed:
 - Video-side analysis — motion energy profiling, source classification (raw footage vs pre-mixed), color/mood extraction. Lower priority; user manages video selection manually. Pre-mixed input videos need different treatment from long-scene footage.
 - Preset save/load UI — closely related to mix style; presets would capture style + pacing + transition preferences alongside BGM/video/output settings
 - Output preview
-- Batch operations

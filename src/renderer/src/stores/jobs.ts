@@ -47,6 +47,21 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   }
 
+  async function createBatch(
+    inputs: Array<{ name: string; config: MixJobConfig }>,
+  ): Promise<MixJob[]> {
+    try {
+      const created = await platform.createBatch(
+        inputs.map((i) => ({ name: i.name, config: ipcClone(i.config) })),
+      )
+      jobs.value = [...created, ...jobs.value]
+      return created
+    } catch (e) {
+      console.error('[jobs] createBatch failed:', e)
+      return []
+    }
+  }
+
   async function cancel(id: number): Promise<void> {
     try {
       await platform.cancelJob(id)
@@ -106,6 +121,7 @@ export const useJobsStore = defineStore('jobs', () => {
     completedJobs,
     load,
     create,
+    createBatch,
     cancel,
     retry,
     remove,

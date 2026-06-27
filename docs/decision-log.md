@@ -4,6 +4,21 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-27 — Batch mode
+
+**Decision:** Add batch job creation as a UI-level concept — no new DB schema or runner changes.
+
+**Context:** Needed the ability to queue multiple mixes at once. Each batch job is a regular `MixJob`, so the runner processes them normally.
+
+**Key choices:**
+- **Deck-dealing video allocation** over independent random picks per job. Maximizes spread across available videos; only overlaps when forced by the ratio of total draws to available videos.
+- **One job per BGM file** — the BGM folder defines the batch size.
+- **Transactional batch insert** (`createJobs` in `db/jobs.ts`) with single `notifyNewJob()` call, rather than N individual `createJob` calls.
+- **`listMediaFiles` IPC with async `readdir`** — renderer can't access the filesystem; audio type includes video extensions (mirrors `selectAudioFile` behavior for BGM-from-video).
+- **Batch is UI-only** — no batch metadata table, no batch grouping in the DB. Keeps the data model simple.
+
+---
+
 ## 2026-06-27 — Frenetic/chaos styles + configurable lookahead
 
 **Decision:** Add two faster mix styles ('frenetic', 'chaos') and make the scored beat selection lookahead configurable per style with a UI override field.

@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import type { MixJob, MixJobConfig } from '../../shared/types'
-import { createJob, deleteJob, getJob, listJobs, retryJob } from '../db/jobs'
+import { createJob, createJobs, deleteJob, getJob, listJobs, retryJob } from '../db/jobs'
 import { cancelRunningJob, notifyNewJob } from '../runner'
 
 export function registerJobsHandlers(): void {
@@ -18,6 +18,18 @@ export function registerJobsHandlers(): void {
       const job = createJob(input)
       notifyNewJob()
       return job
+    },
+  )
+
+  ipcMain.handle(
+    'jobs:create-batch',
+    async (
+      _event,
+      inputs: Array<{ name: string; config: MixJobConfig }>,
+    ): Promise<MixJob[]> => {
+      const created = createJobs(inputs)
+      notifyNewJob()
+      return created
     },
   )
 

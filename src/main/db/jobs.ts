@@ -53,6 +53,25 @@ export function createJob(input: { name: string; config: MixJobConfig }): MixJob
   return toSerializable(row)
 }
 
+export function createJobs(inputs: Array<{ name: string; config: MixJobConfig }>): MixJob[] {
+  const db = getDb()
+  const now = new Date()
+  return db.transaction((tx) => {
+    return inputs.map((input) => {
+      const row = tx
+        .insert(jobs)
+        .values({
+          name: input.name,
+          config: input.config,
+          createdAt: now,
+        })
+        .returning()
+        .get()
+      return toSerializable(row)
+    })
+  })
+}
+
 export function updateJobStatus(id: number, status: MixJobStatus): void {
   const db = getDb()
   const update: Record<string, unknown> = { status }
