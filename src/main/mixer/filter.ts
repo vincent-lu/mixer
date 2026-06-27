@@ -101,7 +101,7 @@ export function buildFilterComplexArgs(
       inputLabel = `[${inputIdx}:v]`
     }
 
-    const baseChain = `${inputLabel}trim=start=${seg.inpoint}:duration=${dur},setpts=PTS-STARTPTS,settb=AVTB`
+    const baseChain = `${inputLabel}trim=start=${seg.inpoint}:duration=${dur},setpts=PTS-STARTPTS,settb=AVTB,setsar=1`
     const effect = effectMap.get(i)
     const effectChain = effect ? getEffectChain(effect, i) : null
     if (effectChain) {
