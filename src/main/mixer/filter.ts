@@ -50,6 +50,7 @@ export function buildFilterComplexArgs(
   effectAssignments: EffectAssignment[] = [],
 ): FilterComplexResult {
   const { segments } = plan
+  const tb = `settb=1/${DEFAULT_PRESET.fps}`
 
   const uniquePaths = [...new Set(segments.map((s) => s.sourcePath))]
   const pathToInput = new Map(uniquePaths.map((p, i) => [p, i]))
@@ -129,7 +130,7 @@ export function buildFilterComplexArgs(
     } else {
       const inputs = segmentIndices.map((s) => `[v${s}]`).join('')
       const label = `g${gi}`
-      filterParts.push(`${inputs}concat=n=${segmentIndices.length}:v=1:a=0,settb=AVTB[${label}]`)
+      filterParts.push(`${inputs}concat=n=${segmentIndices.length}:v=1:a=0,${tb}[${label}]`)
       groupLabels.push(label)
     }
   }
@@ -155,7 +156,7 @@ export function buildFilterComplexArgs(
         ? `transition=custom:expr='${customExpr}':duration=${t.duration}:offset=${offset}`
         : `transition=${t.type}:duration=${t.duration}:offset=${offset}`
       filterParts.push(
-        `[${prevLabel}][${nextLabel}]xfade=${xfadeParams},settb=AVTB[${outLabel}]`,
+        `[${prevLabel}][${nextLabel}]xfade=${xfadeParams},${tb}[${outLabel}]`,
       )
       accDur = accDur + nextDur - t.duration
       const nextTransition = nextGroup.transitionAfter
@@ -168,7 +169,7 @@ export function buildFilterComplexArgs(
       const outLabel = `x${ti}`
       filterParts.push(`[${prevLabel}]fade=t=out:st=${fadeSt}:d=${FLASH_FADE_DURATION}:color=white[${fOut}]`)
       filterParts.push(`[${nextLabel}]fade=t=in:st=0:d=${FLASH_FADE_DURATION}:color=white[${fIn}]`)
-      filterParts.push(`[${fOut}][${fIn}]concat=n=2:v=1:a=0,settb=AVTB[${outLabel}]`)
+      filterParts.push(`[${fOut}][${fIn}]concat=n=2:v=1:a=0,${tb}[${outLabel}]`)
       accDur += nextDur
       const nextTransition = nextGroup.transitionAfter
       if (nextTransition && isXfade(nextTransition)) accDur += nextTransition.duration

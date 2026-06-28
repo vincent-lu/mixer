@@ -88,9 +88,9 @@ describe('buildFilterComplexArgs', () => {
     const transitions = [CUT, xfade('wiperight', 0.5), CUT]
     const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4')
 
-    expect(filterScript).toContain('[v0][v1]concat=n=2:v=1:a=0,settb=AVTB[g0]')
+    expect(filterScript).toContain('[v0][v1]concat=n=2:v=1:a=0,settb=1/30[g0]')
     expect(filterScript).toContain('xfade=transition=wiperight:duration=0.5')
-    expect(filterScript).toMatch(/xfade=.*,settb=AVTB\[x0\]/)
+    expect(filterScript).toMatch(/xfade=.*,settb=1\/30\[x0\]/)
   })
 
   it('uses variable xfade transition type and duration', () => {
@@ -119,7 +119,7 @@ describe('buildFilterComplexArgs', () => {
     expect(filterScript).toContain('fade=t=out')
     expect(filterScript).toContain('color=white')
     expect(filterScript).toContain('fade=t=in:st=0:d=0.06:color=white')
-    expect(filterScript).toContain('concat=n=2:v=1:a=0,settb=AVTB')
+    expect(filterScript).toContain('concat=n=2:v=1:a=0,settb=1/30')
   })
 
   it('handles multiple transition types together', () => {
@@ -130,7 +130,7 @@ describe('buildFilterComplexArgs', () => {
     expect(filterScript).toContain('xfade=transition=slideright')
     expect(filterScript).toContain('fade=t=out')
     expect(filterScript).toContain('fade=t=in')
-    expect(filterScript).toContain('[v2][v3]concat=n=2:v=1:a=0,settb=AVTB')
+    expect(filterScript).toContain('[v2][v3]concat=n=2:v=1:a=0,settb=1/30')
   })
 
   it('emits split filter for deduplicated inputs and references correct labels', () => {
