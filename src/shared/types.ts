@@ -85,6 +85,45 @@ export interface AppSettings {
   lastUsedPresetId: number | null
 }
 
+// Tools — shared across IPC boundary
+export interface ConvertResult {
+  file: string
+  ok: boolean
+  error?: string
+  skipped?: boolean
+}
+
+export interface ConvertProgress {
+  current: number
+  total: number
+  currentFile: string
+  filePercent: number
+}
+
+export interface DuplicateGroup {
+  reason: 'size' | 'name'
+  matchValue: string
+  files: Array<{ path: string; size: number }>
+}
+
+export interface NormalizeFileStatus {
+  path: string
+  needsWork: boolean
+  codec: string
+  width: number
+  height: number
+  fps: number
+  duration: number
+  error?: string
+}
+
+export interface NormalizeProgress {
+  current: number
+  total: number
+  currentFile: string
+  filePercent: number
+}
+
 export const DEFAULT_STYLE_LOOKAHEAD: Record<MixStyle, number> = {
   chill: 1.0,
   relaxed: 0.8,

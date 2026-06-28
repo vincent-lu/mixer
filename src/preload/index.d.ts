@@ -2,8 +2,13 @@ import type { ElectronAPI } from '@electron-toolkit/preload'
 import type {
   AnalysisResult,
   AppSettings,
+  ConvertProgress,
+  ConvertResult,
+  DuplicateGroup,
   MixJob,
   MixJobConfig,
+  NormalizeFileStatus,
+  NormalizeProgress,
   Preset,
   ProgressStage,
 } from '../shared/types'
@@ -44,6 +49,15 @@ declare global {
       createPreset(input: { name: string; config: MixJobConfig }): Promise<Preset>
       updatePreset(id: number, input: { name?: string; config?: MixJobConfig }): Promise<void>
       deletePreset(id: number): Promise<void>
+
+      // Tools
+      convertMp4ToMp3(dir: string): Promise<ConvertResult[]>
+      findDuplicateBgms(dir: string): Promise<DuplicateGroup[]>
+      deleteFiles(paths: string[]): Promise<ConvertResult[]>
+      onConvertProgress(callback: (data: ConvertProgress) => void): () => void
+      scanNormalize(dir: string): Promise<NormalizeFileStatus[]>
+      normalizeVideos(paths: string[]): Promise<ConvertResult[]>
+      onNormalizeProgress(callback: (data: NormalizeProgress) => void): () => void
 
       // App state
       getSettings(): Promise<AppSettings>

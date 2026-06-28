@@ -6,6 +6,9 @@ import { DEFAULT_STYLE_LOOKAHEAD } from '@shared/types'
 import { useJobsStore } from '@renderer/stores/jobs'
 import { allocateVideos } from '@renderer/batch/allocate'
 import FormRow from './config/FormRow.vue'
+import ToolsPanel from './ToolsPanel.vue'
+
+type ConfigMode = 'single' | 'batch' | 'tools'
 
 const store = useJobsStore()
 
@@ -32,7 +35,7 @@ const lookahead = ref(DEFAULT_STYLE_LOOKAHEAD.balanced)
 const outputFilename = ref('')
 const maxConcurrency = ref(1)
 
-const batchMode = ref(false)
+const mode = ref<ConfigMode>('single')
 const bgmFolderPaths = ref<string[]>([])
 const bgmFiles = ref<string[]>([])
 const videoFolderPaths = ref<string[]>([])
@@ -68,12 +71,14 @@ watch(mixStyle, (val) => {
   lookahead.value = DEFAULT_STYLE_LOOKAHEAD[val]
 })
 
-watch(batchMode, (isBatch) => {
-  if (isBatch) {
+watch(mode, (newMode, oldMode) => {
+  if (newMode === 'tools' || oldMode === 'tools') return
+  if (oldMode === 'single') {
     bgmPath.value = ''
     sourceVideoPaths.value = []
     outputFilename.value = ''
-  } else {
+  }
+  if (oldMode === 'batch') {
     bgmFolderPaths.value = []
     bgmFiles.value = []
     videoFolderPaths.value = []
@@ -239,24 +244,31 @@ async function startMix(): Promise<void> {
 <template>
   <div class="config-root">
     <div class="header-row">
-      <h2 class="text-lg font-semibold">New Mix</h2>
+      <h2 class="text-lg font-semibold">{{ mode === 'tools' ? 'Tools' : 'New Mix' }}</h2>
       <div class="mode-toggle">
         <button
           class="toggle-btn"
-          :class="{ active: !batchMode }"
-          @click="batchMode = false"
+          :class="{ active: mode === 'single' }"
+          @click="mode = 'single'"
         >Single</button>
         <button
           class="toggle-btn"
-          :class="{ active: batchMode }"
-          @click="batchMode = true"
+          :class="{ active: mode === 'batch' }"
+          @click="mode = 'batch'"
         >Batch</button>
+        <button
+          class="toggle-btn"
+          :class="{ active: mode === 'tools' }"
+          @click="mode = 'tools'"
+        >Tools</button>
       </div>
     </div>
 
-    <div class="fields">
+    <ToolsPanel v-show="mode === 'tools'" />
+
+    <div v-if="mode !== 'tools'" class="fields">
       <!-- Single mode: BGM file picker -->
-      <FormRow v-if="!batchMode" label="Background Music">
+      <FormRow v-if="mode === 'single'" label="Background Music">
         <div class="file-picker">
           <button class="picker-btn" @click="pickBgm">
             <FaIcon :icon="['fasr', 'music']" />
@@ -267,7 +279,7 @@ async function startMix(): Promise<void> {
       </FormRow>
 
       <!-- Batch mode: BGM folder picker -->
-      <FormRow v-if="batchMode" label="BGM Folders">
+      <FormRow v-if="mode === 'batch'" label="BGM Folders">
         <button class="picker-btn" @click="pickBgmFolder">
           <FaIcon :icon="['fasr', 'folder-music']" />
           <span>Add folder</span>
@@ -289,7 +301,7 @@ async function startMix(): Promise<void> {
       </FormRow>
 
       <!-- Single mode: video file picker -->
-      <FormRow v-if="!batchMode" label="Source Videos">
+      <FormRow v-if="mode === 'single'" label="Source Videos">
         <button class="picker-btn" @click="pickVideos">
           <FaIcon :icon="['fasr', 'film']" />
           <span>Add video files</span>
@@ -305,7 +317,7 @@ async function startMix(): Promise<void> {
       </FormRow>
 
       <!-- Batch mode: video folder picker + videos per mix -->
-      <FormRow v-if="batchMode" label="Video Folders">
+      <FormRow v-if="mode === 'batch'" label="Video Folders">
         <button class="picker-btn" @click="pickVideoFolder">
           <FaIcon :icon="['fasr', 'folder-open']" />
           <span>Add folder</span>
@@ -322,7 +334,7 @@ async function startMix(): Promise<void> {
         <span v-if="videoFolderPaths.length > 0 && videoFiles.length === 0" class="warning-hint">No video files found</span>
       </FormRow>
 
-      <FormRow v-if="batchMode" label="Videos per Mix">
+      <FormRow v-if="mode === 'batch'" label="Videos per Mix">
         <div class="number-input">
           <input
             v-model.number="videosPerJob"
@@ -351,7 +363,7 @@ async function startMix(): Promise<void> {
         </div>
       </FormRow>
 
-      <FormRow v-if="!batchMode" label="Output Filename">
+      <FormRow v-if="mode === 'single'" label="Output Filename">
         <input
           v-model="outputFilename"
           type="text"
@@ -497,11 +509,11 @@ async function startMix(): Promise<void> {
 
       <button
         class="start-btn"
-        :disabled="batchMode ? !canStartBatch : (!bgmPath || sourceVideoPaths.length === 0 || !outputDir || !canStart)"
-        @click="batchMode ? generateBatch() : startMix()"
+        :disabled="mode === 'batch' ? !canStartBatch : (!bgmPath || sourceVideoPaths.length === 0 || !outputDir || !canStart)"
+        @click="mode === 'batch' ? generateBatch() : startMix()"
       >
-        <FaIcon :icon="['fasr', batchMode ? 'layer-group' : 'plus']" />
-        <span>{{ batchMode ? (bgmFiles.length > 0 ? `Generate ${bgmFiles.length} Job${bgmFiles.length !== 1 ? 's' : ''}` : 'Generate Batch') : 'Start Mix' }}</span>
+        <FaIcon :icon="['fasr', mode === 'batch' ? 'layer-group' : 'plus']" />
+        <span>{{ mode === 'batch' ? (bgmFiles.length > 0 ? `Generate ${bgmFiles.length} Job${bgmFiles.length !== 1 ? 's' : ''}` : 'Generate Batch') : 'Start Mix' }}</span>
       </button>
     </div>
   </div>

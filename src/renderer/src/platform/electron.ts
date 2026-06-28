@@ -28,6 +28,14 @@ export const electronPlatform: Platform = {
   updatePreset: (id, input) => window.api.updatePreset(id, input),
   deletePreset: (id) => window.api.deletePreset(id),
 
+  convertMp4ToMp3: (dir) => window.api.convertMp4ToMp3(dir),
+  findDuplicateBgms: (dir) => window.api.findDuplicateBgms(dir),
+  deleteFiles: (paths) => window.api.deleteFiles(paths),
+  onConvertProgress: (callback) => window.api.onConvertProgress(callback),
+  scanNormalize: (dir) => window.api.scanNormalize(dir),
+  normalizeVideos: (paths) => window.api.normalizeVideos(paths),
+  onNormalizeProgress: (callback) => window.api.onNormalizeProgress(callback),
+
   getSettings: () => window.api.getSettings(),
   setMaxConcurrency: (concurrency) => window.api.setMaxConcurrency(concurrency),
   setDefaultOutputDir: (dir) => window.api.setDefaultOutputDir(dir),

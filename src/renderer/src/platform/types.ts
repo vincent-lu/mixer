@@ -1,9 +1,14 @@
 import type {
   AnalysisResult,
   AppSettings,
+  ConvertProgress,
+  ConvertResult,
+  DuplicateGroup,
   MixJob,
   MixJobConfig,
   MixJobStatus,
+  NormalizeFileStatus,
+  NormalizeProgress,
   Preset,
   ProgressStage,
 } from '@shared/types'
@@ -38,6 +43,14 @@ export interface Platform {
   updatePreset(id: number, input: { name?: string; config?: MixJobConfig }): Promise<void>
   deletePreset(id: number): Promise<void>
 
+  convertMp4ToMp3(dir: string): Promise<ConvertResult[]>
+  findDuplicateBgms(dir: string): Promise<DuplicateGroup[]>
+  deleteFiles(paths: string[]): Promise<ConvertResult[]>
+  onConvertProgress(callback: (data: ConvertProgress) => void): () => void
+  scanNormalize(dir: string): Promise<NormalizeFileStatus[]>
+  normalizeVideos(paths: string[]): Promise<ConvertResult[]>
+  onNormalizeProgress(callback: (data: NormalizeProgress) => void): () => void
+
   getSettings(): Promise<AppSettings>
   setMaxConcurrency(concurrency: number): Promise<void>
   setDefaultOutputDir(dir: string | null): Promise<void>
@@ -47,9 +60,14 @@ export interface Platform {
 export type {
   AnalysisResult,
   AppSettings,
+  ConvertProgress,
+  ConvertResult,
+  DuplicateGroup,
   MixJob,
   MixJobConfig,
   MixJobStatus,
+  NormalizeFileStatus,
+  NormalizeProgress,
   Preset,
   ProgressStage,
 }

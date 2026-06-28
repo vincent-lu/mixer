@@ -3,8 +3,13 @@ import { electronAPI } from '@electron-toolkit/preload'
 import type { IpcRendererEvent } from 'electron'
 import type {
   AppSettings,
+  ConvertProgress,
+  ConvertResult,
+  DuplicateGroup,
   MixJob,
   MixJobConfig,
+  NormalizeFileStatus,
+  NormalizeProgress,
   Preset,
   ProgressStage,
 } from '../shared/types'
@@ -57,6 +62,28 @@ const api = {
   updatePreset: (id: number, input: { name?: string; config?: MixJobConfig }): Promise<void> =>
     ipcRenderer.invoke('presets:update', id, input),
   deletePreset: (id: number): Promise<void> => ipcRenderer.invoke('presets:delete', id),
+
+  // Tools
+  convertMp4ToMp3: (dir: string): Promise<ConvertResult[]> =>
+    ipcRenderer.invoke('tools:convert-mp4-to-mp3', dir),
+  findDuplicateBgms: (dir: string): Promise<DuplicateGroup[]> =>
+    ipcRenderer.invoke('tools:find-duplicates', dir),
+  deleteFiles: (paths: string[]): Promise<ConvertResult[]> =>
+    ipcRenderer.invoke('tools:delete-files', paths),
+  onConvertProgress: (callback: (data: ConvertProgress) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, data: ConvertProgress): void => callback(data)
+    ipcRenderer.on('tools:convert-progress', listener)
+    return () => { ipcRenderer.removeListener('tools:convert-progress', listener) }
+  },
+  scanNormalize: (dir: string): Promise<NormalizeFileStatus[]> =>
+    ipcRenderer.invoke('tools:scan-normalize', dir),
+  normalizeVideos: (paths: string[]): Promise<ConvertResult[]> =>
+    ipcRenderer.invoke('tools:normalize-videos', paths),
+  onNormalizeProgress: (callback: (data: NormalizeProgress) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, data: NormalizeProgress): void => callback(data)
+    ipcRenderer.on('tools:normalize-progress', listener)
+    return () => { ipcRenderer.removeListener('tools:normalize-progress', listener) }
+  },
 
   // App state
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('state:getSettings'),
