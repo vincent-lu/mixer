@@ -56,7 +56,7 @@ export function registerToolsHandlers(): void {
 
           const tempMp3 = mp3 + '.tmp'
           try {
-            const args = ['-y', '-i', mp4, '-vn', '-acodec', 'libmp3lame', '-q:a', '2', tempMp3]
+            const args = ['-y', '-i', mp4, '-vn', '-acodec', 'libmp3lame', '-q:a', '2', '-f', 'mp3', tempMp3]
             await runFfmpeg(args, duration, (percent) => {
               broadcast('tools:convert-progress', { current: i + 1, total, currentFile: mp4, filePercent: percent })
             })
