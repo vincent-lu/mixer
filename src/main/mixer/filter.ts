@@ -155,7 +155,7 @@ export function buildFilterComplexArgs(
         ? `transition=custom:expr='${customExpr}':duration=${t.duration}:offset=${offset}`
         : `transition=${t.type}:duration=${t.duration}:offset=${offset}`
       filterParts.push(
-        `[${prevLabel}][${nextLabel}]xfade=${xfadeParams}[${outLabel}]`,
+        `[${prevLabel}][${nextLabel}]xfade=${xfadeParams},settb=AVTB[${outLabel}]`,
       )
       accDur = accDur + nextDur - t.duration
       const nextTransition = nextGroup.transitionAfter

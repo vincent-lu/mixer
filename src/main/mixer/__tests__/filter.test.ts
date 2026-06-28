@@ -90,6 +90,7 @@ describe('buildFilterComplexArgs', () => {
 
     expect(filterScript).toContain('[v0][v1]concat=n=2:v=1:a=0,settb=AVTB[g0]')
     expect(filterScript).toContain('xfade=transition=wiperight:duration=0.5')
+    expect(filterScript).toMatch(/xfade=.*,settb=AVTB\[x0\]/)
   })
 
   it('uses variable xfade transition type and duration', () => {
