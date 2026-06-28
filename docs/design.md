@@ -238,6 +238,8 @@ Two-panel layout, no router:
 └──────────────────────────┴────────────────┘
 ```
 
+**Mode toggle:** Three-way `Single | Batch | Tools` toggle in the config panel header. ToolsPanel uses `v-show` (stays mounted) so state survives mode switches. Mode watcher only clears form state on single↔batch transitions, not to/from tools.
+
 Output format is always MP4, video resolution always 1080p (not user-configurable).
 
 ## Testing Strategy
@@ -279,6 +281,22 @@ When `autoStyle` is enabled on a job config, the pipeline resolves mix style, tr
 **Pipeline integration:** `resolveAutoStyle()` in `src/main/mixer/auto-style.ts` runs after audio analysis. Returns concrete `mixStyle`, `lookahead`, `transitionEffect`, `transitionDensity`, `clipEffect`, `effectChance` which override the (ignored) config values for downstream steps.
 
 **UI:** "Auto Style" checkbox after Scene Detection. When checked, hides mix style, lookahead, transition, and clip effect controls. Shows an "Intensity" slider (0.5×–2.0×) to bias toward calmer or more intense styles.
+
+## Tools
+
+Standalone utilities in a 3rd tab, independent of the mix pipeline. Handlers in `src/main/ipc/tools.ts`, UI in `src/renderer/src/components/ToolsPanel.vue`.
+
+| Tool | IPC channels | Destructive? |
+|------|-------------|-------------|
+| MP4→MP3 Converter | `tools:convert-mp4-to-mp3`, `tools:convert-progress` | Yes — `unlink` originals after successful conversion |
+| Duplicate BGM Finder | `tools:find-duplicates`, `tools:delete-files` | Recoverable — `shell.trashItem` |
+| Pre-Normalize Videos | `tools:scan-normalize`, `tools:normalize-videos`, `tools:normalize-progress` | In-place — temp file + rename |
+
+**Converter:** Spawn-based `runFfmpeg` (LAME VBR Q2). Writes to `.mp3.tmp`, renames on success. Skips if `.mp3` already exists. Per-file progress via push events.
+
+**Duplicate finder:** Groups audio files by exact filesize or fuzzy filename (strips `(N)`, `- Copy`, `_copy` patterns). Per-item error isolation on delete.
+
+**Pre-normalizer:** Reuses pipeline's `probeVideo`, `buildNormalizeArgs`, `runFfmpeg`, `DEFAULT_PRESET` (H.264/1920×1080/30fps/CRF 18). `isLocalPath` guard rejects network paths. Probe failures reported as errors, not candidates.
 
 ## Deferred
 

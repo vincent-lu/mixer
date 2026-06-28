@@ -16,6 +16,7 @@
 - [QoL sprint](project_qol-sprint.md) — complete: all 4 items done (vestigial IPC, stale docs, retry, push progress)
 - [Batch mode](project_batch-mode.md) — implemented: multi-folder batch job creation with deck-dealing video allocation, queue pause, clear completed
 - [Auto style](project_auto-style.md) — implemented: BPM × energy × bias auto-resolves style, transitions, effects
+- [Tools tab](project_tools.md) — implemented: MP4→MP3 converter, duplicate BGM finder, video pre-normalizer
 - [Parallel encoding](project_parallel-encoding.md) — idea: split single jobs into N parallel ffmpeg chunks for faster encoding
 - [Agent mixer](project_agent-mixer.md) — idea: LLM agent auto-selects BGMs + videos and runs mixes via CLI
 

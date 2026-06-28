@@ -4,6 +4,23 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-28 — Tools tab: MP4→MP3, duplicate finder, pre-normalize
+
+**Decision:** Add a 3rd mode ("Tools") alongside Single/Batch for standalone utilities that don't create mix jobs.
+
+**Key changes:**
+- **3-way mode toggle** — `batchMode: boolean` refactored to `mode: 'single' | 'batch' | 'tools'`. ToolsPanel uses `v-show` (not `v-if`) so state survives mode switches. Mode watcher only clears on single↔batch, not to/from tools.
+- **MP4→MP3 converter** — spawn-based `runFfmpeg` (avoids `execFileAsync` maxBuffer). Temp-file-then-rename prevents partial outputs. Skips existing MP3s. Permanently deletes originals (`unlink`, not trash — intentional per spec).
+- **Duplicate BGM finder** — groups by exact filesize OR fuzzy filename (copy patterns only — removed `[_-]\d+$` rule that false-matched track numbers). `shell.trashItem` for recoverable deletion with per-item error isolation.
+- **Video pre-normalizer** — reuses pipeline's `probeVideo`/`buildNormalizeArgs`/`runFfmpeg`/`DEFAULT_PRESET`. `isLocalPath` guard. Probe failures reported as errors, not normalization candidates.
+- **IPC pattern** — 5 new handlers in `src/main/ipc/tools.ts`. Progress via `webContents.send` broadcast (same pattern as job runner). `ConvertResult` type with `skipped` field for non-error skips.
+
+**Why:** Manual file management (extracting audio, cleaning duplicates, pre-encoding) was a repetitive pre-mixing chore.
+
+**Review:** Three rounds of 4-model swarm review. Bugs fixed: partial MP3 on failed conversion, delete error isolation, MP3 overwrite, track-number false positives, v-if unmount state loss, missing isLocalPath guard, execFileAsync maxBuffer, config clearing on tools switch.
+
+---
+
 ## 2026-06-28 — Multi-folder batch, clear completed, xfade timebase fix
 
 **Key changes:**
