@@ -92,6 +92,21 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   }
 
+  async function clearCompleted(): Promise<void> {
+    const ids = new Set(
+      jobs.value
+        .filter((j) => j.status === 'done' || j.status === 'failed' || j.status === 'cancelled')
+        .map((j) => j.id),
+    )
+    try {
+      await Promise.all([...ids].map((id) => platform.deleteJob(id)))
+      jobs.value = jobs.value.filter((j) => !ids.has(j.id))
+    } catch (e) {
+      console.error('[jobs] clearCompleted failed:', e)
+      await load()
+    }
+  }
+
   async function remove(id: number): Promise<void> {
     try {
       await platform.deleteJob(id)
@@ -138,6 +153,7 @@ export const useJobsStore = defineStore('jobs', () => {
     cancel,
     retry,
     remove,
+    clearCompleted,
     togglePaused,
     subscribe,
     unsubscribe,

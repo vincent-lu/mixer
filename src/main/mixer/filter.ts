@@ -129,7 +129,7 @@ export function buildFilterComplexArgs(
     } else {
       const inputs = segmentIndices.map((s) => `[v${s}]`).join('')
       const label = `g${gi}`
-      filterParts.push(`${inputs}concat=n=${segmentIndices.length}:v=1:a=0[${label}]`)
+      filterParts.push(`${inputs}concat=n=${segmentIndices.length}:v=1:a=0,settb=AVTB[${label}]`)
       groupLabels.push(label)
     }
   }
@@ -168,7 +168,7 @@ export function buildFilterComplexArgs(
       const outLabel = `x${ti}`
       filterParts.push(`[${prevLabel}]fade=t=out:st=${fadeSt}:d=${FLASH_FADE_DURATION}:color=white[${fOut}]`)
       filterParts.push(`[${nextLabel}]fade=t=in:st=0:d=${FLASH_FADE_DURATION}:color=white[${fIn}]`)
-      filterParts.push(`[${fOut}][${fIn}]concat=n=2:v=1:a=0[${outLabel}]`)
+      filterParts.push(`[${fOut}][${fIn}]concat=n=2:v=1:a=0,settb=AVTB[${outLabel}]`)
       accDur += nextDur
       const nextTransition = nextGroup.transitionAfter
       if (nextTransition && isXfade(nextTransition)) accDur += nextTransition.duration

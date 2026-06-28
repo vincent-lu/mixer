@@ -4,6 +4,15 @@ Append-only. Newest first.
 
 ---
 
+## 2026-06-28 — Multi-folder batch, clear completed, xfade timebase fix
+
+**Key changes:**
+- **Multi-folder batch** — BGM and Video folder pickers accept multiple folders with add/remove. Files aggregated across all folders, duplicate folder prevention. Default videos per mix changed from 5 to 3.
+- **Clear completed** — bulk-delete all done/failed/cancelled jobs from the queue. Button appears in Job Queue header only when completed jobs exist.
+- **xfade timebase fix** — add `settb=AVTB` after `concat` filters in filter_complex. Grouped hard-cut segments and flash transitions output a different timebase (`1/1000000`) than single segments (`1/30`), causing xfade to fail. The `settb=AVTB` normalizes both paths.
+
+---
+
 ## 2026-06-28 — Always MP4/1080p, remove format/resolution UI
 
 **Decision:** Remove Output Format and Video Resolution dropdowns from the GUI. Always default to MP4 and 1080p.

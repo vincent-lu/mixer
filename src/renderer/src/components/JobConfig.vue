@@ -33,11 +33,11 @@ const outputFilename = ref('')
 const maxConcurrency = ref(1)
 
 const batchMode = ref(false)
-const bgmFolderPath = ref('')
+const bgmFolderPaths = ref<string[]>([])
 const bgmFiles = ref<string[]>([])
-const videoFolderPath = ref('')
+const videoFolderPaths = ref<string[]>([])
 const videoFiles = ref<string[]>([])
-const videosPerJob = ref(5)
+const videosPerJob = ref(3)
 const bgmAudioOnly = ref(true)
 const autoStyle = ref(false)
 const intensityBias = ref(1.0)
@@ -74,17 +74,17 @@ watch(batchMode, (isBatch) => {
     sourceVideoPaths.value = []
     outputFilename.value = ''
   } else {
-    bgmFolderPath.value = ''
+    bgmFolderPaths.value = []
     bgmFiles.value = []
-    videoFolderPath.value = ''
+    videoFolderPaths.value = []
     videoFiles.value = []
-    videosPerJob.value = 5
+    videosPerJob.value = 3
     bgmAudioOnly.value = true
   }
 })
 
 watch(bgmAudioOnly, async () => {
-  await scanBgmFolder()
+  await scanBgmFolders()
 })
 
 watch(clipEffect, (val, oldVal) => {
@@ -131,28 +131,47 @@ function fileName(path: string): string {
   return path.split(/[/\\]/).pop() ?? path
 }
 
-async function scanBgmFolder(): Promise<void> {
-  if (!bgmFolderPath.value) return
-  bgmFiles.value = await platform.listMediaFiles({
-    dir: bgmFolderPath.value,
-    type: bgmAudioOnly.value ? 'audio-only' : 'audio',
-  })
+async function scanBgmFolders(): Promise<void> {
+  if (bgmFolderPaths.value.length === 0) { bgmFiles.value = []; return }
+  const type = bgmAudioOnly.value ? 'audio-only' as const : 'audio' as const
+  const results = await Promise.all(
+    bgmFolderPaths.value.map((dir) => platform.listMediaFiles({ dir, type })),
+  )
+  bgmFiles.value = results.flat()
 }
 
 async function pickBgmFolder(): Promise<void> {
   const dir = await platform.selectDirectory()
-  if (dir) {
-    bgmFolderPath.value = dir
-    await scanBgmFolder()
+  if (dir && !bgmFolderPaths.value.includes(dir)) {
+    bgmFolderPaths.value = [...bgmFolderPaths.value, dir]
+    await scanBgmFolders()
   }
+}
+
+function removeBgmFolder(index: number): void {
+  bgmFolderPaths.value = bgmFolderPaths.value.filter((_, i) => i !== index)
+  void scanBgmFolders()
+}
+
+async function scanVideoFolders(): Promise<void> {
+  if (videoFolderPaths.value.length === 0) { videoFiles.value = []; return }
+  const results = await Promise.all(
+    videoFolderPaths.value.map((dir) => platform.listMediaFiles({ dir, type: 'video' })),
+  )
+  videoFiles.value = results.flat()
 }
 
 async function pickVideoFolder(): Promise<void> {
   const dir = await platform.selectDirectory()
-  if (dir) {
-    videoFolderPath.value = dir
-    videoFiles.value = await platform.listMediaFiles({ dir, type: 'video' })
+  if (dir && !videoFolderPaths.value.includes(dir)) {
+    videoFolderPaths.value = [...videoFolderPaths.value, dir]
+    await scanVideoFolders()
   }
+}
+
+function removeVideoFolder(index: number): void {
+  videoFolderPaths.value = videoFolderPaths.value.filter((_, i) => i !== index)
+  void scanVideoFolders()
 }
 
 function buildStyleConfig(): Partial<MixJobConfig> {
@@ -248,20 +267,25 @@ async function startMix(): Promise<void> {
       </FormRow>
 
       <!-- Batch mode: BGM folder picker -->
-      <FormRow v-if="batchMode" label="BGM Folder">
-        <div class="file-picker">
-          <button class="picker-btn" @click="pickBgmFolder">
-            <FaIcon :icon="['fasr', 'folder-music']" />
-            <span>Select folder</span>
-          </button>
-          <span class="file-path">{{ bgmFolderPath || 'No folder selected' }}</span>
-          <span v-if="bgmFolderPath" class="file-count">{{ bgmFiles.length }} file{{ bgmFiles.length !== 1 ? 's' : '' }}</span>
+      <FormRow v-if="batchMode" label="BGM Folders">
+        <button class="picker-btn" @click="pickBgmFolder">
+          <FaIcon :icon="['fasr', 'folder-music']" />
+          <span>Add folder</span>
+        </button>
+        <div v-if="bgmFolderPaths.length > 0" class="folder-list">
+          <div v-for="(path, i) in bgmFolderPaths" :key="path" class="folder-item">
+            <span class="folder-name">{{ fileName(path) }}</span>
+            <button class="icon-btn danger" @click="removeBgmFolder(i)">
+              <FaIcon :icon="['fasr', 'trash']" />
+            </button>
+          </div>
         </div>
+        <span v-if="bgmFolderPaths.length > 0" class="file-count">{{ bgmFiles.length }} file{{ bgmFiles.length !== 1 ? 's' : '' }} total</span>
         <label class="checkbox-label">
           <input v-model="bgmAudioOnly" type="checkbox" class="checkbox" />
           <span>Audio files only</span>
         </label>
-        <span v-if="bgmFolderPath && bgmFiles.length === 0" class="warning-hint">No audio files found in this folder</span>
+        <span v-if="bgmFolderPaths.length > 0 && bgmFiles.length === 0" class="warning-hint">No audio files found</span>
       </FormRow>
 
       <!-- Single mode: video file picker -->
@@ -281,16 +305,21 @@ async function startMix(): Promise<void> {
       </FormRow>
 
       <!-- Batch mode: video folder picker + videos per mix -->
-      <FormRow v-if="batchMode" label="Video Folder">
-        <div class="file-picker">
-          <button class="picker-btn" @click="pickVideoFolder">
-            <FaIcon :icon="['fasr', 'folder-open']" />
-            <span>Select folder</span>
-          </button>
-          <span class="file-path">{{ videoFolderPath || 'No folder selected' }}</span>
-          <span v-if="videoFolderPath" class="file-count">{{ videoFiles.length }} file{{ videoFiles.length !== 1 ? 's' : '' }}</span>
+      <FormRow v-if="batchMode" label="Video Folders">
+        <button class="picker-btn" @click="pickVideoFolder">
+          <FaIcon :icon="['fasr', 'folder-open']" />
+          <span>Add folder</span>
+        </button>
+        <div v-if="videoFolderPaths.length > 0" class="folder-list">
+          <div v-for="(path, i) in videoFolderPaths" :key="path" class="folder-item">
+            <span class="folder-name">{{ fileName(path) }}</span>
+            <button class="icon-btn danger" @click="removeVideoFolder(i)">
+              <FaIcon :icon="['fasr', 'trash']" />
+            </button>
+          </div>
         </div>
-        <span v-if="videoFolderPath && videoFiles.length === 0" class="warning-hint">No video files found in this folder</span>
+        <span v-if="videoFolderPaths.length > 0" class="file-count">{{ videoFiles.length }} file{{ videoFiles.length !== 1 ? 's' : '' }} total</span>
+        <span v-if="videoFolderPaths.length > 0 && videoFiles.length === 0" class="warning-hint">No video files found</span>
       </FormRow>
 
       <FormRow v-if="batchMode" label="Videos per Mix">
@@ -542,6 +571,29 @@ async function startMix(): Promise<void> {
   font-size: 12px;
   color: #9ca3af;
   white-space: nowrap;
+}
+
+.folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: #1f2937;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #d1d5db;
 }
 
 .warning-hint {

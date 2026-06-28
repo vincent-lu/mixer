@@ -255,9 +255,10 @@ Test candidates (as features are built):
 UI-level batch job creation. Single/Batch toggle in `JobConfig.vue` swaps individual file pickers for folder pickers.
 
 **Inputs (batch mode):**
-- **BGM folder** — scanned via `platform:listMediaFiles` IPC. One job created per BGM file.
-- **Video folder** — scanned similarly. User sets "Videos per mix" count.
-- All other config (format, resolution, style, transitions, effects, lookahead) shared across batch jobs.
+- **BGM folders** (one or more) — scanned via `platform:listMediaFiles` IPC. Files aggregated across all folders. One job created per BGM file.
+- **Video folders** (one or more) — scanned similarly. Files aggregated. User sets "Videos per mix" count (default 3).
+- Duplicate folder prevention. Individual folders removable.
+- All other config (style, transitions, effects, lookahead) shared across batch jobs.
 
 **Video allocation:** Deck-dealing algorithm in `src/renderer/src/batch/allocate.ts`. Builds a repeating shuffled sequence (Fisher-Yates per round), slices into per-job chunks. Maximizes spread — no overlap when total draws <= available videos; even distribution when overlap is forced.
 

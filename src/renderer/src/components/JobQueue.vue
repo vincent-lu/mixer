@@ -6,7 +6,7 @@ import { platform } from '@renderer/platform'
 import type { MixJob, MixJobStatus } from '@renderer/platform'
 
 const store = useJobsStore()
-const { jobs, loading, queuePaused } = storeToRefs(store)
+const { jobs, loading, queuePaused, completedJobs } = storeToRefs(store)
 
 const now = ref(Date.now())
 let tickTimer: ReturnType<typeof setInterval> | null = null
@@ -103,10 +103,20 @@ function showOutput(path: string): void {
   <div class="queue-root">
     <div class="queue-header">
       <h2 class="text-lg font-semibold">Job Queue</h2>
-      <button class="pause-btn" :class="{ paused: queuePaused }" @click="store.togglePaused()">
-        <FaIcon :icon="['fasr', queuePaused ? 'play' : 'pause']" />
-        <span>{{ queuePaused ? 'Resume' : 'Pause' }}</span>
-      </button>
+      <div class="header-actions">
+        <button
+          v-if="completedJobs.length > 0"
+          class="pause-btn"
+          @click="store.clearCompleted()"
+        >
+          <FaIcon :icon="['fasr', 'trash']" />
+          <span>Clear</span>
+        </button>
+        <button class="pause-btn" :class="{ paused: queuePaused }" @click="store.togglePaused()">
+          <FaIcon :icon="['fasr', queuePaused ? 'play' : 'pause']" />
+          <span>{{ queuePaused ? 'Resume' : 'Pause' }}</span>
+        </button>
+      </div>
     </div>
 
     <div v-if="loading && jobs.length === 0" class="empty-state">Loading...</div>
@@ -187,6 +197,11 @@ function showOutput(path: string): void {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .pause-btn {
