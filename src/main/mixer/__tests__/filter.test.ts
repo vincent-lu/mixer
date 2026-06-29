@@ -151,7 +151,7 @@ describe('buildFilterComplexArgs', () => {
     const effects: EffectAssignment[] = [{ segmentIndex: 1, effect: 'hueshift' }]
     const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4', effects)
 
-    expect(filterScript).toContain('setsar=1,hue=h=t*90[v1]')
+    expect(filterScript).toContain('hue=h=t*90,setsar=1[v1]')
     expect(filterScript).toContain('settb=AVTB,fps=30,setsar=1[v0]')
     expect(filterScript).toContain('settb=AVTB,fps=30,setsar=1[v2]')
   })
@@ -164,7 +164,7 @@ describe('buildFilterComplexArgs', () => {
 
     expect(filterScript).toContain('split=3[cr0][cg0][cb0]')
     expect(filterScript).toContain('[cr0]lutrgb=g=0:b=0')
-    expect(filterScript).toContain('blend=all_mode=addition[v0]')
+    expect(filterScript).toContain('blend=all_mode=addition,setsar=1[v0]')
     expect(filterScript).toContain('settb=AVTB,fps=30,setsar=1[v1]')
   })
 
@@ -174,7 +174,7 @@ describe('buildFilterComplexArgs', () => {
     const effects: EffectAssignment[] = [{ segmentIndex: 0, effect: 'vignette_pulse' }]
     const { filterScript } = buildFilterComplexArgs(plan, transitions, '/bgm.mp3', '/out.mp4', effects)
 
-    expect(filterScript).toContain('setsar=1,vignette=PI/4+PI/4*sin(t*4)[v0]')
+    expect(filterScript).toContain('vignette=PI/4+PI/4*sin(t*4),setsar=1[v0]')
     expect(filterScript).toContain('xfade=transition=fade')
   })
 

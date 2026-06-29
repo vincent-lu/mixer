@@ -103,20 +103,20 @@ export function buildFilterComplexArgs(
       inputLabel = `[${inputIdx}:v]`
     }
 
-    const baseChain = `${inputLabel}trim=start=${seg.inpoint}:duration=${dur},setpts=PTS-STARTPTS,settb=AVTB,fps=${DEFAULT_PRESET.fps},setsar=1`
+    const baseChain = `${inputLabel}trim=start=${seg.inpoint}:duration=${dur},setpts=PTS-STARTPTS,settb=AVTB,fps=${DEFAULT_PRESET.fps}`
     const effect = effectMap.get(i)
     const effectChain = effect ? getEffectChain(effect, i) : null
     if (effectChain) {
       const parts = effectChain.split(';')
-      filterParts.push(`${baseChain},${parts[0]}${parts.length === 1 ? `[v${i}]` : ''}`)
+      filterParts.push(`${baseChain},${parts[0]}${parts.length === 1 ? `,setsar=1[v${i}]` : ''}`)
       for (let p = 1; p < parts.length - 1; p++) {
         filterParts.push(parts[p]!)
       }
       if (parts.length > 1) {
-        filterParts.push(`${parts[parts.length - 1]}[v${i}]`)
+        filterParts.push(`${parts[parts.length - 1]},setsar=1[v${i}]`)
       }
     } else {
-      filterParts.push(`${baseChain}[v${i}]`)
+      filterParts.push(`${baseChain},setsar=1[v${i}]`)
     }
   }
 
