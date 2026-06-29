@@ -17,6 +17,7 @@
 - [Batch mode](project_batch-mode.md) — implemented: multi-folder batch job creation with deck-dealing video allocation, queue pause, clear completed
 - [Auto style](project_auto-style.md) — implemented: BPM × energy × bias auto-resolves style, transitions, effects
 - [Tools tab](project_tools.md) — implemented: MP4→MP3 converter, duplicate BGM finder, video pre-normalizer
+- [SAR edge case](project_sar-edge-case.md) — potential: non-square SAR videos skip normalization, may display at wrong ratio
 - [Parallel encoding](project_parallel-encoding.md) — idea: split single jobs into N parallel ffmpeg chunks for faster encoding
 - [Agent mixer](project_agent-mixer.md) — idea: LLM agent auto-selects BGMs + videos and runs mixes via CLI
 
