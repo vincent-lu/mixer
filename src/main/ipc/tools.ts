@@ -174,9 +174,10 @@ export function registerToolsHandlers(): void {
       for (const path of videoFiles) {
         try {
           const probe = await probeVideo(path)
+          const nonMp4 = extname(path).toLowerCase() !== '.mp4'
           results.push({
             path,
-            needsWork: needsNormalization(probe, DEFAULT_PRESET),
+            needsWork: needsNormalization(probe, DEFAULT_PRESET) || nonMp4,
             codec: probe.codec,
             width: probe.width,
             height: probe.height,
@@ -217,25 +218,32 @@ export function registerToolsHandlers(): void {
           }
 
           const probe = await probeVideo(videoPath)
-          if (!needsNormalization(probe, DEFAULT_PRESET)) {
+          const isMp4 = extname(videoPath).toLowerCase() === '.mp4'
+          if (!needsNormalization(probe, DEFAULT_PRESET) && isMp4) {
             results.push({ file: videoPath, ok: true })
             continue
           }
 
-          const ext = extname(videoPath)
-          const tempPath = join(dirname(videoPath), `.mixer-norm-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`)
+          const finalPath = isMp4 ? videoPath : videoPath.replace(/\.[^.]+$/, '.mp4')
+          if (!isMp4 && await stat(finalPath).then(() => true, () => false)) {
+            results.push({ file: videoPath, ok: false, error: 'Target .mp4 already exists' })
+            continue
+          }
+
+          const tempPath = join(dirname(videoPath), `.mixer-norm-${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`)
 
           try {
             const args = buildNormalizeArgs(videoPath, tempPath, DEFAULT_PRESET)
             await runFfmpeg(args, probe.duration, (percent) => {
               broadcast('tools:normalize-progress', { current: i + 1, total, currentFile: videoPath, filePercent: percent })
             })
-            await rename(tempPath, videoPath)
-            results.push({ file: videoPath, ok: true })
+            await rename(tempPath, finalPath)
           } catch (err) {
             await unlink(tempPath).catch(() => {})
             throw err
           }
+          if (!isMp4) await unlink(videoPath).catch(() => {})
+          results.push({ file: videoPath, ok: true })
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err)
           results.push({ file: videoPath, ok: false, error: message })
