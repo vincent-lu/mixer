@@ -12,6 +12,9 @@ export interface ProbeResult {
   height: number
   codec: string
   fps: number
+  pixFmt: string
+  sar: string
+  fastStart: boolean
 }
 
 export interface Segment {
@@ -51,6 +54,7 @@ export interface NormalizePreset {
   width: number
   height: number
   fps: number
+  pixFmt: string
 }
 
 export interface PipelineResult {

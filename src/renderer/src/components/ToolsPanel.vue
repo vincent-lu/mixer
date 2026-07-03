@@ -307,7 +307,7 @@ function formatSize(bytes: number): string {
         <div v-if="normNeedWork.length > 0" class="norm-file-list">
           <div v-for="f in normNeedWork" :key="f.path" class="norm-file">
             <span class="norm-file-name">{{ fileName(f.path) }}</span>
-            <span class="norm-file-meta">{{ f.codec }} {{ f.width }}x{{ f.height }} @ {{ f.fps }}fps · {{ formatDuration(f.duration) }}</span>
+            <span class="norm-file-meta">{{ f.codec }} {{ f.width }}x{{ f.height }} @ {{ f.fps }}fps{{ f.pixFmt !== 'yuv420p' ? ' · ' + f.pixFmt : '' }}{{ f.sar !== '1:1' ? ' · SAR ' + f.sar : '' }}{{ !f.fastStart ? ' · slow start' : '' }} · {{ formatDuration(f.duration) }}</span>
           </div>
         </div>
         <button v-if="normNeedWork.length > 0" class="action-btn" @click="startNormalize">

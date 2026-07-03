@@ -1,3 +1,4 @@
+import { open } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import type { ProbeResult } from './types'
@@ -14,6 +15,8 @@ interface FfprobeOutput {
     width?: number
     height?: number
     r_frame_rate?: string
+    pix_fmt?: string
+    sample_aspect_ratio?: string
   }>
 }
 
@@ -22,6 +25,46 @@ function parseFps(rFrameRate: string | undefined): number {
   const [num, den] = rFrameRate.split('/')
   if (!num || !den || Number(den) === 0) return 30
   return Math.round(Number(num) / Number(den))
+}
+
+async function checkFastStart(filePath: string): Promise<boolean> {
+  const ext = filePath.split('.').pop()?.toLowerCase()
+  if (!['mp4', 'mov', 'm4v'].includes(ext ?? '')) return true
+
+  let fh
+  try {
+    fh = await open(filePath, 'r')
+    const buf = Buffer.alloc(8)
+    let offset = 0
+    const MAX_SCAN = 100 * 1024 * 1024
+
+    while (offset < MAX_SCAN) {
+      const { bytesRead } = await fh.read(buf, 0, 8, offset)
+      if (bytesRead < 8) break
+
+      let size = buf.readUInt32BE(0)
+      const type = buf.toString('ascii', 4, 8)
+
+      if (type === 'moov') return true
+      if (type === 'mdat') return false
+
+      if (size === 1) {
+        const ext64 = Buffer.alloc(8)
+        const { bytesRead: r2 } = await fh.read(ext64, 0, 8, offset + 8)
+        if (r2 < 8) break
+        size = Number(ext64.readBigUInt64BE(0))
+      }
+
+      if (size < 8) break
+      offset += size
+    }
+
+    return true
+  } catch {
+    return true
+  } finally {
+    await fh?.close()
+  }
 }
 
 export async function probeVideo(path: string): Promise<ProbeResult> {
@@ -41,6 +84,9 @@ export async function probeVideo(path: string): Promise<ProbeResult> {
     height: videoStream.height ?? 0,
     codec: videoStream.codec_name ?? 'unknown',
     fps: parseFps(videoStream.r_frame_rate),
+    pixFmt: videoStream.pix_fmt ?? 'unknown',
+    sar: (videoStream.sample_aspect_ratio === '0:1' ? '1:1' : videoStream.sample_aspect_ratio) ?? '1:1',
+    fastStart: await checkFastStart(path),
   }
 }
 

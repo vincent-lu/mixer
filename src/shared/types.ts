@@ -113,6 +113,9 @@ export interface NormalizeFileStatus {
   width: number
   height: number
   fps: number
+  pixFmt: string
+  sar: string
+  fastStart: boolean
   duration: number
   error?: string
 }

@@ -182,6 +182,9 @@ export function registerToolsHandlers(): void {
             width: probe.width,
             height: probe.height,
             fps: probe.fps,
+            pixFmt: probe.pixFmt,
+            sar: probe.sar,
+            fastStart: probe.fastStart,
             duration: probe.duration,
           })
         } catch (err) {
@@ -192,6 +195,9 @@ export function registerToolsHandlers(): void {
             width: 0,
             height: 0,
             fps: 0,
+            pixFmt: 'unknown',
+            sar: '1:1',
+            fastStart: true,
             duration: 0,
             error: err instanceof Error ? err.message : String(err),
           })

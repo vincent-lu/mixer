@@ -11,6 +11,9 @@ const makeProbes = (count: number, duration = 60): ProbeResult[] =>
     height: 1080,
     codec: 'h264',
     fps: 30,
+    pixFmt: 'yuv420p',
+    sar: '1:1',
+    fastStart: true,
   }))
 
 const makeAnalysis = (segmentDuration: number, totalDuration: number): AnalysisResult => {

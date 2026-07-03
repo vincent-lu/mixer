@@ -8,6 +8,7 @@ export const DEFAULT_PRESET: NormalizePreset = {
   width: 1920,
   height: 1080,
   fps: 30,
+  pixFmt: 'yuv420p',
 }
 
 export function needsNormalization(probe: ProbeResult, preset: NormalizePreset): boolean {
@@ -15,7 +16,10 @@ export function needsNormalization(probe: ProbeResult, preset: NormalizePreset):
     probe.codec !== preset.codec ||
     probe.width !== preset.width ||
     probe.height !== preset.height ||
-    probe.fps !== preset.fps
+    probe.fps !== preset.fps ||
+    probe.pixFmt !== preset.pixFmt ||
+    probe.sar !== '1:1' ||
+    !probe.fastStart
   )
 }
 
@@ -46,11 +50,13 @@ export function buildNormalizeArgs(
     '-crf',
     '18',
     '-vf',
-    `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=decrease,pad=${preset.width}:${preset.height}:-1:-1:color=black`,
+    `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=decrease,pad=${preset.width}:${preset.height}:-1:-1:color=black,setsar=1`,
     '-r',
     String(preset.fps),
     '-pix_fmt',
-    'yuv420p',
+    preset.pixFmt,
+    '-movflags',
+    '+faststart',
     '-c:a',
     'copy',
     outputPath,
@@ -86,7 +92,7 @@ async function normalizeVideo(
     throw err
   }
 
-  return { ...probe, codec: preset.codec, width: preset.width, height: preset.height, fps: preset.fps }
+  return { ...probe, codec: preset.codec, width: preset.width, height: preset.height, fps: preset.fps, pixFmt: preset.pixFmt, sar: '1:1', fastStart: true }
 }
 
 export async function normalizeVideos(
