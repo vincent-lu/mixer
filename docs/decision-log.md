@@ -4,6 +4,20 @@ Append-only. Newest first.
 
 ---
 
+## 2026-07-03 — Extended normalization: pixFmt, SAR, fastStart, .mp4 container
+
+**Decision:** Extend normalization pipeline to detect and fix four additional issues beyond codec/resolution/fps.
+
+**Key changes:**
+- **pixFmt** — `ProbeResult` and `NormalizePreset` now include `pixFmt`. Videos with non-`yuv420p` pixel format (e.g. `yuv444p`, `yuvj420p`) are flagged and re-encoded. Ensures browser compatibility.
+- **SAR** — probed from ffprobe `sample_aspect_ratio`. Non-square SAR (≠ 1:1) triggers re-encode. `0:1` (ffprobe's "unspecified") coerced to `1:1` at probe time to avoid false positives. `setsar=1` added to normalize filter chain.
+- **fastStart** — `checkFastStart` in `probe.ts` reads MP4 atom structure (top-level box walk, handles 64-bit extended sizes). `moov` before `mdat` = fast-start. Missing fast-start triggers re-encode with `-movflags +faststart`. Defaults to `true` for non-MP4 containers and on read errors (safe bias — don't flag).
+- **Container** — pre-normalize tool forces `.mp4` output for non-.mp4 inputs (`.mkv`, `.avi`, etc.), with collision check. Pipeline normalizer keeps original container (pipeline inputs are already validated).
+
+**Why:** Videos passing the old 4-field check could still have browser-incompatible pixel formats, anamorphic pixels, or slow-start moov placement causing playback stalls. User reported "stuck for a few seconds before playback starts" — classic missing-faststart symptom.
+
+---
+
 ## 2026-06-28 — Tools tab: MP4→MP3, duplicate finder, pre-normalize
 
 **Decision:** Add a 3rd mode ("Tools") alongside Single/Batch for standalone utilities that don't create mix jobs.

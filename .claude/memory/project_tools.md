@@ -28,9 +28,12 @@ Standalone utility tools accessible via a 3rd tab alongside Single/Batch.
 - Delete errors surfaced inline in UI
 
 **Tool 3 — Pre-Normalize Videos:**
-- Probes each video with `probeVideo`, shows which need H.264/1920x1080/30fps normalization
+- Probes each video with `probeVideo`, shows which need normalization
+- Checks: codec (h264), resolution (1920x1080), fps (30), pixFmt (yuv420p), SAR (1:1), fastStart (moov before mdat), container (.mp4)
+- UI shows non-standard values inline (e.g. "yuv444p", "SAR 4:3", "slow start")
 - Reuses pipeline's `buildNormalizeArgs`/`runFfmpeg`/`DEFAULT_PRESET`
 - `isLocalPath` guard rejects network/external drives
+- Non-.mp4 containers re-encoded to .mp4 (original deleted); collision check if .mp4 already exists
 - Probe failures reported as errors (not `needsWork`), shown separately in UI
 - In-place replacement via temp file + rename (same pattern as pipeline's `normalizeVideo`)
 

@@ -190,12 +190,12 @@ Main-process job runner in `src/main/runner.ts`. Bridges UI job creation to the 
 
 ## Video Preprocessing
 
-Source videos are normalized to a common format before mixing. Ensures consistent resolution, framerate, and codec across all segments.
+Source videos are normalized to a common format before mixing. Ensures consistent resolution, framerate, codec, pixel format, aspect ratio, and fast-start playback across all segments.
 
 **Pipeline** (`src/main/mixer/normalize.ts`):
-1. **Probe** — `probeVideo()` reads codec, resolution, framerate, duration (already done by pipeline)
-2. **Match check** — `needsNormalization()` compares against target preset (default: h264, 1920x1080, 30fps). Videos already matching are skipped.
-3. **Normalize** (if needed) — re-encode to target preset via ffmpeg. Scale with aspect ratio preservation + black padding. Audio streams preserved (`-c:a copy`).
+1. **Probe** — `probeVideo()` reads codec, resolution, framerate, duration, pixel format, SAR, and moov atom position (fast-start check via binary atom scan)
+2. **Match check** — `needsNormalization()` compares against target preset (default: h264, 1920×1080, 30fps, yuv420p). Also flags non-square SAR (≠ 1:1, with `0:1` coerced to `1:1`) and missing fast-start (moov after mdat). Videos matching all criteria are skipped.
+3. **Normalize** (if needed) — re-encode to target preset via ffmpeg. Scale with aspect ratio preservation + black padding + `setsar=1`. `-movflags +faststart` relocates moov atom. Audio streams preserved (`-c:a copy`).
 4. **In-place replace** — write to temp file in same directory, atomic `rename()` over original. No cache directory or duplicate files.
 
 **Local path requirement:** Normalization requires source videos on a local drive (`/Users/*` on macOS, drive letter on Windows). Network/external paths fail with a descriptive error — copy assets locally before mixing.
