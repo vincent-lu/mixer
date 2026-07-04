@@ -40,7 +40,7 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
 
   signal?.throwIfAborted()
 
-  const normalizedProbes = await normalizeVideos(probes, DEFAULT_PRESET, onProgress, signal)
+  const normalizedProbes = await normalizeVideos(probes, DEFAULT_PRESET, onProgress, signal, options.trimToKeyframe)
 
   signal?.throwIfAborted()
 

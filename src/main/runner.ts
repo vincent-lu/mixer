@@ -99,6 +99,7 @@ async function executeJob(job: MixJob): Promise<void> {
       lookahead: job.config.lookahead,
       autoStyle: job.config.autoStyle,
       intensityBias: job.config.intensityBias,
+      trimToKeyframe: job.config.trimToKeyframe,
       onProgress: (stage, percent) => {
         const status = stage === 'mixing' || stage === 'encoding' ? 'mixing' : 'analyzing'
         if (status !== lastStatus) {

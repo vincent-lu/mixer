@@ -90,6 +90,35 @@ export async function probeVideo(path: string): Promise<ProbeResult> {
   }
 }
 
+export async function probeFirstKeyframeOffset(path: string): Promise<number> {
+  try {
+    const { stdout } = await execFileAsync('ffprobe', [
+      '-v', 'quiet', '-select_streams', 'v:0',
+      '-show_entries', 'frame=key_frame,pts_time',
+      '-read_intervals', '%+#1',
+      '-print_format', 'json',
+      path,
+    ])
+    const data = JSON.parse(stdout) as { frames?: Array<{ key_frame?: number; pts_time?: string }> }
+    const first = data.frames?.[0]
+    if (!first || first.key_frame === 1) return 0
+
+    const { stdout: kfOut } = await execFileAsync('ffprobe', [
+      '-v', 'quiet', '-select_streams', 'v:0',
+      '-skip_frame', 'nokey',
+      '-show_entries', 'frame=pts_time',
+      '-read_intervals', '%+10',
+      '-print_format', 'json',
+      path,
+    ])
+    const kfData = JSON.parse(kfOut) as { frames?: Array<{ pts_time?: string }> }
+    const firstKf = kfData.frames?.[0]
+    return firstKf?.pts_time ? Number(firstKf.pts_time) : 0
+  } catch {
+    return 0
+  }
+}
+
 export async function probeAudioDuration(path: string): Promise<number> {
   const { stdout } = await execFileAsync('ffprobe', [...PROBE_ARGS, path])
   const data: FfprobeOutput = JSON.parse(stdout)

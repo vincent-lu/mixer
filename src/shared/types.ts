@@ -44,6 +44,7 @@ export interface MixJobConfig {
   lookahead?: number
   autoStyle?: boolean
   intensityBias?: number
+  trimToKeyframe?: boolean
 }
 
 export interface AnalysisResult {
@@ -116,6 +117,7 @@ export interface NormalizeFileStatus {
   pixFmt: string
   sar: string
   fastStart: boolean
+  firstKeyframeOffset: number
   duration: number
   error?: string
 }

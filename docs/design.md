@@ -202,7 +202,9 @@ Source videos are normalized to a common format before mixing. Ensures consisten
 
 **Parallelization:** All videos normalize concurrently via `Promise.all`. Progress weighted by duration for accurate reporting.
 
-**Progress stage:** Reports as `normalizing` (0–100%), mapped to `analyzing` job status. Stage is skipped entirely if all videos already match the preset.
+**Trim to first keyframe** (opt-in): `trimToKeyframe` in `MixJobConfig` / Tools checkbox. `probeFirstKeyframeOffset()` checks if the first frame is a keyframe; if not, finds the first keyframe's timestamp via ffprobe `-skip_frame nokey -frames:v 1`. When enabled, `-ss <offset>` is prepended to normalize args (input seeking). Fixes frozen start frames from bad video splits without false-positiving on title cards.
+
+**Progress stage:** Reports as `normalizing` (0–100%), mapped to `analyzing` job status. Stage is skipped entirely if all videos already match the preset and trim is disabled.
 
 ## Scene Selection
 

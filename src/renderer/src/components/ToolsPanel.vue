@@ -113,6 +113,7 @@ async function deleteSelectedDupes(): Promise<void> {
 }
 
 // --- Pre-Normalize Videos ---
+const trimToKeyframe = ref(true)
 const normFolder = ref('')
 const normScanning = ref(false)
 const normFiles = ref<NormalizeFileStatus[]>([])
@@ -146,7 +147,7 @@ async function startNormalize(): Promise<void> {
   normResults.value = []
   normProgress.value = { current: 0, total: paths.length, currentFile: '', filePercent: 0 }
   try {
-    normResults.value = await platform.normalizeVideos(paths)
+    normResults.value = await platform.normalizeVideos(paths, trimToKeyframe.value)
   } finally {
     normalizing.value = false
     if (normFolder.value) {
@@ -293,6 +294,11 @@ function formatSize(bytes: number): string {
         </div>
       </FormRow>
 
+      <label class="checkbox-label">
+        <input v-model="trimToKeyframe" type="checkbox" class="checkbox" />
+        <span>Trim frozen start frames</span>
+      </label>
+
       <div v-if="normScanning" class="scanning-indicator">
         <FaIcon :icon="['fasr', 'spinner-third']" spin />
         <span>Probing videos...</span>
@@ -307,7 +313,7 @@ function formatSize(bytes: number): string {
         <div v-if="normNeedWork.length > 0" class="norm-file-list">
           <div v-for="f in normNeedWork" :key="f.path" class="norm-file">
             <span class="norm-file-name">{{ fileName(f.path) }}</span>
-            <span class="norm-file-meta">{{ f.codec }} {{ f.width }}x{{ f.height }} @ {{ f.fps }}fps{{ f.pixFmt !== 'yuv420p' ? ' · ' + f.pixFmt : '' }}{{ f.sar !== '1:1' ? ' · SAR ' + f.sar : '' }}{{ !f.fastStart ? ' · slow start' : '' }} · {{ formatDuration(f.duration) }}</span>
+            <span class="norm-file-meta">{{ f.codec }} {{ f.width }}x{{ f.height }} @ {{ f.fps }}fps{{ f.pixFmt !== 'yuv420p' ? ' · ' + f.pixFmt : '' }}{{ f.sar !== '1:1' ? ' · SAR ' + f.sar : '' }}{{ !f.fastStart ? ' · slow start' : '' }}{{ f.firstKeyframeOffset > 0 ? ' · frozen ' + f.firstKeyframeOffset.toFixed(1) + 's' : '' }} · {{ formatDuration(f.duration) }}</span>
           </div>
         </div>
         <button v-if="normNeedWork.length > 0" class="action-btn" @click="startNormalize">

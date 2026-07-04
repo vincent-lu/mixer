@@ -110,6 +110,20 @@ describe('buildNormalizeArgs', () => {
     expect(args[movflagsIndex + 1]).toBe('+faststart')
   })
 
+  it('inserts -ss before -i when trimOffset > 0', () => {
+    const args = buildNormalizeArgs('/input.mp4', '/output.mp4', preset, 2.5)
+    const ssIndex = args.indexOf('-ss')
+    const iIndex = args.indexOf('-i')
+    expect(ssIndex).toBeGreaterThan(-1)
+    expect(args[ssIndex + 1]).toBe('2.5')
+    expect(ssIndex).toBeLessThan(iIndex)
+  })
+
+  it('omits -ss when trimOffset is 0', () => {
+    const args = buildNormalizeArgs('/input.mp4', '/output.mp4', preset, 0)
+    expect(args).not.toContain('-ss')
+  })
+
   it('places output path last', () => {
     const args = buildNormalizeArgs('/input.mp4', '/output.mp4', preset)
     expect(args.at(-1)).toBe('/output.mp4')

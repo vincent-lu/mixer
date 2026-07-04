@@ -33,7 +33,7 @@ export const electronPlatform: Platform = {
   deleteFiles: (paths) => window.api.deleteFiles(paths),
   onConvertProgress: (callback) => window.api.onConvertProgress(callback),
   scanNormalize: (dir) => window.api.scanNormalize(dir),
-  normalizeVideos: (paths) => window.api.normalizeVideos(paths),
+  normalizeVideos: (paths, trimToKeyframe) => window.api.normalizeVideos(paths, trimToKeyframe),
   onNormalizeProgress: (callback) => window.api.onNormalizeProgress(callback),
 
   getSettings: () => window.api.getSettings(),

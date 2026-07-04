@@ -44,6 +44,7 @@ const videosPerJob = ref(3)
 const bgmAudioOnly = ref(true)
 const autoStyle = ref(false)
 const intensityBias = ref(1.0)
+const trimToKeyframe = ref(false)
 
 const canStart = ref(true)
 
@@ -209,6 +210,7 @@ async function generateBatch(): Promise<void> {
         sceneDetection: sceneDetection.value,
         videoResolution: '1080p',
         ...buildStyleConfig(),
+        trimToKeyframe: trimToKeyframe.value || undefined,
         outputFilename: bgmName,
       }
       return { name, config }
@@ -231,6 +233,7 @@ async function startMix(): Promise<void> {
       sceneDetection: sceneDetection.value,
       videoResolution: '1080p',
       ...buildStyleConfig(),
+      trimToKeyframe: trimToKeyframe.value || undefined,
       outputFilename: outputFilename.value || undefined,
     }
     const name = `Mix — ${outputFilename.value || fileName(bgmPath.value)}`
@@ -492,6 +495,13 @@ async function startMix(): Promise<void> {
           <span class="density-value">{{ effectChance }}%</span>
         </div>
         <span class="style-hint">{{ effectChance === 0 ? 'No segments get the effect' : `${effectChance}% chance per segment` }}</span>
+      </FormRow>
+
+      <FormRow label="Trim Frozen Start">
+        <label class="checkbox-label">
+          <input v-model="trimToKeyframe" type="checkbox" class="checkbox" />
+          <span>Remove frozen frames before first keyframe</span>
+        </label>
       </FormRow>
 
       <FormRow label="Max Concurrent Jobs">

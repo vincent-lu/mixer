@@ -4,6 +4,22 @@ Append-only. Newest first.
 
 ---
 
+## 2026-07-04 — Trim to first keyframe (frozen start fix)
+
+**Decision:** Add opt-in keyframe-trimming to normalization. Videos from bad splits often start with undecodable frames (no keyframe at frame 0) — the decoder repeats the last reference frame, appearing "stuck."
+
+**Key changes:**
+- `probeFirstKeyframeOffset()` in `probe.ts` — first call checks if frame 0 is a keyframe; second call uses `-skip_frame nokey -frames:v 1` to find the first keyframe timestamp. Returns 0 for clean files.
+- `buildNormalizeArgs` accepts `trimOffset` — adds `-ss <offset>` before `-i` (input seeking, fast).
+- `normalizeVideo/normalizeVideos` accept `trimToKeyframe` flag. The per-probe guard allows trim-only files through when enabled.
+- `MixJobConfig.trimToKeyframe` wired through runner → pipeline → normalize.
+- Tools scan always probes keyframe offset for display; normalize passes `trimToKeyframe` from checkbox.
+- UI: ToolsPanel checkbox (default on), JobConfig checkbox (default off).
+
+**Why:** `freezedetect` would false-positive on title cards. First-keyframe check is deterministic — a valid video always starts with a keyframe; a bad split doesn't.
+
+---
+
 ## 2026-07-03 — Extended normalization: pixFmt, SAR, fastStart, .mp4 container
 
 **Decision:** Extend normalization pipeline to detect and fix four additional issues beyond codec/resolution/fps.

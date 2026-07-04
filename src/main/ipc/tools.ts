@@ -2,7 +2,7 @@ import { readdir, rename, stat, unlink } from 'node:fs/promises'
 import { dirname, extname, join } from 'node:path'
 import { BrowserWindow, ipcMain, shell } from 'electron'
 import type { ConvertResult, DuplicateGroup, NormalizeFileStatus } from '../../shared/types'
-import { probeVideo } from '../mixer/probe'
+import { probeFirstKeyframeOffset, probeVideo } from '../mixer/probe'
 import { buildNormalizeArgs, DEFAULT_PRESET, isLocalPath, needsNormalization } from '../mixer/normalize'
 import { runFfmpeg } from '../mixer/encode'
 
@@ -175,9 +175,10 @@ export function registerToolsHandlers(): void {
         try {
           const probe = await probeVideo(path)
           const nonMp4 = extname(path).toLowerCase() !== '.mp4'
+          const kfOffset = await probeFirstKeyframeOffset(path)
           results.push({
             path,
-            needsWork: needsNormalization(probe, DEFAULT_PRESET) || nonMp4,
+            needsWork: needsNormalization(probe, DEFAULT_PRESET) || nonMp4 || kfOffset > 0,
             codec: probe.codec,
             width: probe.width,
             height: probe.height,
@@ -185,6 +186,7 @@ export function registerToolsHandlers(): void {
             pixFmt: probe.pixFmt,
             sar: probe.sar,
             fastStart: probe.fastStart,
+            firstKeyframeOffset: kfOffset,
             duration: probe.duration,
           })
         } catch (err) {
@@ -198,6 +200,7 @@ export function registerToolsHandlers(): void {
             pixFmt: 'unknown',
             sar: '1:1',
             fastStart: true,
+            firstKeyframeOffset: 0,
             duration: 0,
             error: err instanceof Error ? err.message : String(err),
           })
@@ -209,7 +212,7 @@ export function registerToolsHandlers(): void {
 
   ipcMain.handle(
     'tools:normalize-videos',
-    async (_event, paths: string[]): Promise<ConvertResult[]> => {
+    async (_event, paths: string[], trimToKeyframe?: boolean): Promise<ConvertResult[]> => {
       const results: ConvertResult[] = []
       const total = paths.length
 
@@ -225,7 +228,8 @@ export function registerToolsHandlers(): void {
 
           const probe = await probeVideo(videoPath)
           const isMp4 = extname(videoPath).toLowerCase() === '.mp4'
-          if (!needsNormalization(probe, DEFAULT_PRESET) && isMp4) {
+          const trimOffset = trimToKeyframe ? await probeFirstKeyframeOffset(videoPath) : 0
+          if (!needsNormalization(probe, DEFAULT_PRESET) && isMp4 && trimOffset === 0) {
             results.push({ file: videoPath, ok: true })
             continue
           }
@@ -239,8 +243,8 @@ export function registerToolsHandlers(): void {
           const tempPath = join(dirname(videoPath), `.mixer-norm-${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`)
 
           try {
-            const args = buildNormalizeArgs(videoPath, tempPath, DEFAULT_PRESET)
-            await runFfmpeg(args, probe.duration, (percent) => {
+            const args = buildNormalizeArgs(videoPath, tempPath, DEFAULT_PRESET, trimOffset)
+            await runFfmpeg(args, Math.max(0, probe.duration - trimOffset), (percent) => {
               broadcast('tools:normalize-progress', { current: i + 1, total, currentFile: videoPath, filePercent: percent })
             })
             await rename(tempPath, finalPath)

@@ -1,6 +1,7 @@
 import { rename, unlink } from 'node:fs/promises'
 import { dirname, extname, join } from 'node:path'
 import { runFfmpeg } from './encode'
+import { probeFirstKeyframeOffset } from './probe'
 import type { NormalizePreset, OnProgress, ProbeResult } from './types'
 
 export const DEFAULT_PRESET: NormalizePreset = {
@@ -34,6 +35,7 @@ export function buildNormalizeArgs(
   inputPath: string,
   outputPath: string,
   preset: NormalizePreset,
+  trimOffset = 0,
 ): string[] {
   if (preset.codec !== 'h264') {
     throw new Error(`Unsupported normalize codec: ${preset.codec}. Only h264 is supported.`)
@@ -41,6 +43,7 @@ export function buildNormalizeArgs(
 
   return [
     '-y',
+    ...(trimOffset > 0 ? ['-ss', String(trimOffset)] : []),
     '-i',
     inputPath,
     '-c:v',
@@ -68,8 +71,10 @@ async function normalizeVideo(
   preset: NormalizePreset,
   onProgress?: (percent: number) => void,
   signal?: AbortSignal,
+  trimToKeyframe?: boolean,
 ): Promise<ProbeResult> {
-  if (!needsNormalization(probe, preset)) return probe
+  const trimOffset = trimToKeyframe ? await probeFirstKeyframeOffset(probe.path) : 0
+  if (!needsNormalization(probe, preset) && trimOffset === 0) return probe
 
   if (!isLocalPath(probe.path)) {
     throw new Error(
@@ -84,15 +89,15 @@ async function normalizeVideo(
 
   try {
     signal?.throwIfAborted()
-    const args = buildNormalizeArgs(probe.path, tempPath, preset)
-    await runFfmpeg(args, probe.duration, onProgress, signal)
+    const args = buildNormalizeArgs(probe.path, tempPath, preset, trimOffset)
+    await runFfmpeg(args, Math.max(0, probe.duration - trimOffset), onProgress, signal)
     await rename(tempPath, probe.path)
   } catch (err) {
     await unlink(tempPath).catch(() => {})
     throw err
   }
 
-  return { ...probe, codec: preset.codec, width: preset.width, height: preset.height, fps: preset.fps, pixFmt: preset.pixFmt, sar: '1:1', fastStart: true }
+  return { ...probe, codec: preset.codec, width: preset.width, height: preset.height, fps: preset.fps, pixFmt: preset.pixFmt, sar: '1:1', fastStart: true, duration: Math.max(0, probe.duration - trimOffset) }
 }
 
 export async function normalizeVideos(
@@ -100,17 +105,18 @@ export async function normalizeVideos(
   preset: NormalizePreset,
   onProgress?: OnProgress,
   signal?: AbortSignal,
+  trimToKeyframe?: boolean,
 ): Promise<ProbeResult[]> {
-  const toNormalize = probes.filter((p) => needsNormalization(p, preset))
+  const toProcess = probes.filter((p) => needsNormalization(p, preset) || trimToKeyframe)
 
-  if (toNormalize.length === 0) return probes
+  if (toProcess.length === 0) return probes
 
-  const totalDuration = toNormalize.reduce((sum, p) => sum + p.duration, 0)
+  const totalDuration = toProcess.reduce((sum, p) => sum + p.duration, 0)
   const progressMap = new Map<string, number>()
 
   const results = await Promise.all(
     probes.map(async (probe) => {
-      if (!needsNormalization(probe, preset)) return probe
+      if (!needsNormalization(probe, preset) && !trimToKeyframe) return probe
 
       return normalizeVideo(
         probe,
@@ -122,6 +128,7 @@ export async function normalizeVideos(
           onProgress?.('normalizing', Math.min(100, Math.round((elapsed / totalDuration) * 100)))
         },
         signal,
+        trimToKeyframe,
       )
     }),
   )

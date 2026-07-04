@@ -77,8 +77,8 @@ const api = {
   },
   scanNormalize: (dir: string): Promise<NormalizeFileStatus[]> =>
     ipcRenderer.invoke('tools:scan-normalize', dir),
-  normalizeVideos: (paths: string[]): Promise<ConvertResult[]> =>
-    ipcRenderer.invoke('tools:normalize-videos', paths),
+  normalizeVideos: (paths: string[], trimToKeyframe?: boolean): Promise<ConvertResult[]> =>
+    ipcRenderer.invoke('tools:normalize-videos', paths, trimToKeyframe),
   onNormalizeProgress: (callback: (data: NormalizeProgress) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, data: NormalizeProgress): void => callback(data)
     ipcRenderer.on('tools:normalize-progress', listener)

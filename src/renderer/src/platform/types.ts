@@ -48,7 +48,7 @@ export interface Platform {
   deleteFiles(paths: string[]): Promise<ConvertResult[]>
   onConvertProgress(callback: (data: ConvertProgress) => void): () => void
   scanNormalize(dir: string): Promise<NormalizeFileStatus[]>
-  normalizeVideos(paths: string[]): Promise<ConvertResult[]>
+  normalizeVideos(paths: string[], trimToKeyframe?: boolean): Promise<ConvertResult[]>
   onNormalizeProgress(callback: (data: NormalizeProgress) => void): () => void
 
   getSettings(): Promise<AppSettings>

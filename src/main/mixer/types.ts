@@ -45,6 +45,7 @@ export interface PipelineOptions {
   lookahead?: number
   autoStyle?: boolean
   intensityBias?: number
+  trimToKeyframe?: boolean
   onProgress?: OnProgress
   signal?: AbortSignal
 }
