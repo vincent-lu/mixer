@@ -29,8 +29,9 @@ Standalone utility tools accessible via a 3rd tab alongside Single/Batch.
 
 **Tool 3 — Pre-Normalize Videos:**
 - Probes each video with `probeVideo`, shows which need normalization
-- Checks: codec (h264), resolution (1920x1080), fps (30), pixFmt (yuv420p), SAR (1:1), fastStart (moov before mdat), container (.mp4)
-- UI shows non-standard values inline (e.g. "yuv444p", "SAR 4:3", "slow start")
+- Checks: codec (h264), resolution (1920x1080), fps (30), pixFmt (yuv420p), SAR (1:1), fastStart (moov before mdat), container (.mp4), first keyframe offset
+- UI shows non-standard values inline (e.g. "yuv444p", "SAR 4:3", "slow start", "frozen 2.3s")
+- "Trim frozen start frames" checkbox (default on) — trims to first keyframe via `-ss` input seeking
 - Reuses pipeline's `buildNormalizeArgs`/`runFfmpeg`/`DEFAULT_PRESET`
 - `isLocalPath` guard rejects network/external drives
 - Non-.mp4 containers re-encoded to .mp4 (original deleted); collision check if .mp4 already exists
