@@ -49,6 +49,9 @@ export interface Platform {
   onConvertProgress(callback: (data: ConvertProgress) => void): () => void
   scanNormalize(dir: string): Promise<NormalizeFileStatus[]>
   normalizeVideos(paths: string[], trimToKeyframe?: boolean): Promise<ConvertResult[]>
+  probeDuration(path: string): Promise<number>
+  trimVideo(input: { path: string; startTime: number; endTime: number }): Promise<ConvertResult>
+  onTrimProgress(callback: (data: { percent: number }) => void): () => void
   onNormalizeProgress(callback: (data: NormalizeProgress) => void): () => void
 
   getSettings(): Promise<AppSettings>

@@ -79,6 +79,15 @@ const api = {
     ipcRenderer.invoke('tools:scan-normalize', dir),
   normalizeVideos: (paths: string[], trimToKeyframe?: boolean): Promise<ConvertResult[]> =>
     ipcRenderer.invoke('tools:normalize-videos', paths, trimToKeyframe),
+  probeDuration: (path: string): Promise<number> =>
+    ipcRenderer.invoke('tools:probe-duration', path),
+  trimVideo: (input: { path: string; startTime: number; endTime: number }): Promise<ConvertResult> =>
+    ipcRenderer.invoke('tools:trim-video', input),
+  onTrimProgress: (callback: (data: { percent: number }) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, data: { percent: number }): void => callback(data)
+    ipcRenderer.on('tools:trim-progress', listener)
+    return () => { ipcRenderer.removeListener('tools:trim-progress', listener) }
+  },
   onNormalizeProgress: (callback: (data: NormalizeProgress) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, data: NormalizeProgress): void => callback(data)
     ipcRenderer.on('tools:normalize-progress', listener)

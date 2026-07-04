@@ -17,6 +17,7 @@ const convertResults = ref<ConvertResult[]>([])
 
 let unsubConvertProgress: (() => void) | null = null
 let unsubNormProgress: (() => void) | null = null
+let unsubTrimProgress: (() => void) | null = null
 
 onMounted(() => {
   unsubConvertProgress = platform.onConvertProgress((data) => {
@@ -25,11 +26,15 @@ onMounted(() => {
   unsubNormProgress = platform.onNormalizeProgress((data) => {
     normProgress.value = data
   })
+  unsubTrimProgress = platform.onTrimProgress((data) => {
+    trimProgress.value = data.percent
+  })
 })
 
 onUnmounted(() => {
   unsubConvertProgress?.()
   unsubNormProgress?.()
+  unsubTrimProgress?.()
 })
 
 async function pickConvertFolder(): Promise<void> {
@@ -158,6 +163,44 @@ async function startNormalize(): Promise<void> {
         normScanning.value = false
       }
     }
+  }
+}
+
+// --- Video Trimmer ---
+const trimFile = ref('')
+const trimDuration = ref(0)
+const trimStart = ref(0)
+const trimEnd = ref(0)
+const trimming = ref(false)
+const trimProgress = ref(0)
+const trimResult = ref<ConvertResult | null>(null)
+
+async function pickTrimFile(): Promise<void> {
+  const path = await platform.selectAudioFile()
+  if (path) {
+    trimFile.value = path
+    trimResult.value = null
+    trimProgress.value = 0
+    const dur = await platform.probeDuration(path)
+    trimDuration.value = dur
+    trimStart.value = 0
+    trimEnd.value = dur
+  }
+}
+
+async function startTrim(): Promise<void> {
+  if (!trimFile.value || trimming.value) return
+  trimming.value = true
+  trimResult.value = null
+  trimProgress.value = 0
+  try {
+    trimResult.value = await platform.trimVideo({
+      path: trimFile.value,
+      startTime: trimStart.value,
+      endTime: trimEnd.value,
+    })
+  } finally {
+    trimming.value = false
   }
 }
 
@@ -342,6 +385,72 @@ function formatSize(bytes: number): string {
 
       <div v-if="!normScanning && normFolder && normFiles.length === 0" class="no-results">
         No video files found.
+      </div>
+    </section>
+
+    <!-- Video Trimmer -->
+    <section class="tool-section">
+      <h3 class="tool-title">Video Trimmer</h3>
+      <p class="tool-desc">Trim a video to a specific time range and re-encode to normalized format.</p>
+
+      <FormRow label="Video File">
+        <div class="file-picker">
+          <button class="picker-btn" @click="pickTrimFile">
+            <FaIcon :icon="['fasr', 'film']" />
+            <span>Select video</span>
+          </button>
+          <span class="file-path">{{ trimFile ? fileName(trimFile) : 'No file selected' }}</span>
+        </div>
+        <span v-if="trimDuration > 0" class="style-hint">Duration: {{ formatDuration(trimDuration) }}</span>
+      </FormRow>
+
+      <div v-if="trimFile && trimDuration > 0" class="trim-inputs">
+        <FormRow label="Start Time">
+          <div class="trim-time-row">
+            <input
+              v-model.number="trimStart"
+              type="number"
+              class="input trim-input"
+              min="0"
+              :max="trimEnd"
+              step="0.1"
+            />
+            <span class="trim-unit">s</span>
+          </div>
+        </FormRow>
+        <FormRow label="End Time">
+          <div class="trim-time-row">
+            <input
+              v-model.number="trimEnd"
+              type="number"
+              class="input trim-input"
+              :min="trimStart"
+              :max="trimDuration"
+              step="0.1"
+            />
+            <span class="trim-unit">s</span>
+          </div>
+        </FormRow>
+        <span class="style-hint">Output duration: {{ formatDuration(trimEnd - trimStart) }}</span>
+
+        <button v-if="!trimming" class="action-btn" :disabled="trimEnd <= trimStart" @click="startTrim">
+          <FaIcon :icon="['fasr', 'scissors']" />
+          <span>Trim</span>
+        </button>
+      </div>
+
+      <div v-if="trimming" class="progress-bar-container">
+        <div class="progress-label">Trimming...</div>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: `${trimProgress}%` }" />
+        </div>
+      </div>
+
+      <div v-if="trimResult" class="results-list">
+        <div class="result-item" :class="{ error: !trimResult.ok }">
+          <FaIcon :icon="['fasr', trimResult.ok ? 'check' : 'xmark']" :class="trimResult.ok ? 'text-green' : 'text-red'" />
+          <span class="result-file">{{ trimResult.ok ? 'Trimmed successfully' : trimResult.error }}</span>
+        </div>
       </div>
     </section>
   </div>
@@ -679,5 +788,31 @@ function formatSize(bytes: number): string {
   font-size: 11px;
   color: #6b7280;
   white-space: nowrap;
+}
+
+.trim-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trim-time-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input.trim-input {
+  width: 90px;
+}
+
+.trim-unit {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.style-hint {
+  font-size: 13px;
+  color: #9ca3af;
 }
 </style>

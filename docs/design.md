@@ -293,8 +293,11 @@ Standalone utilities in a 3rd tab, independent of the mix pipeline. Handlers in 
 | MP4→MP3 Converter | `tools:convert-mp4-to-mp3`, `tools:convert-progress` | Yes — `unlink` originals after successful conversion |
 | Duplicate BGM Finder | `tools:find-duplicates`, `tools:delete-files` | Recoverable — `shell.trashItem` |
 | Pre-Normalize Videos | `tools:scan-normalize`, `tools:normalize-videos`, `tools:normalize-progress` | In-place — temp file + rename |
+| Video Trimmer | `tools:probe-duration`, `tools:trim-video`, `tools:trim-progress` | In-place — re-encode to `.mp4` |
 
 **Converter:** Spawn-based `runFfmpeg` (LAME VBR Q2). Writes to `.mp3.tmp`, renames on success. Skips if `.mp3` already exists. Per-file progress via push events.
+
+**Video Trimmer:** Single-file trim to a time range. Re-encodes to normalized format (H.264/1080p/yuv420p/faststart). Uses `-ss` before `-i` for fast input seeking, `-t` for duration. Replaces original (forces `.mp4` container).
 
 **Duplicate finder:** Groups audio files by exact filesize or fuzzy filename (strips `(N)`, `- Copy`, `_copy` patterns). Per-item error isolation on delete.
 

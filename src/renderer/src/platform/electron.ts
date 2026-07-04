@@ -34,6 +34,9 @@ export const electronPlatform: Platform = {
   onConvertProgress: (callback) => window.api.onConvertProgress(callback),
   scanNormalize: (dir) => window.api.scanNormalize(dir),
   normalizeVideos: (paths, trimToKeyframe) => window.api.normalizeVideos(paths, trimToKeyframe),
+  probeDuration: (path) => window.api.probeDuration(path),
+  trimVideo: (input) => window.api.trimVideo(input),
+  onTrimProgress: (callback) => window.api.onTrimProgress(callback),
   onNormalizeProgress: (callback) => window.api.onNormalizeProgress(callback),
 
   getSettings: () => window.api.getSettings(),

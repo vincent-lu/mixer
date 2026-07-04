@@ -263,4 +263,67 @@ export function registerToolsHandlers(): void {
       return results
     },
   )
+
+  ipcMain.handle(
+    'tools:probe-duration',
+    async (_event, path: string): Promise<number> => {
+      try {
+        const probe = await probeVideo(path)
+        return probe.duration
+      } catch {
+        return 0
+      }
+    },
+  )
+
+  ipcMain.handle(
+    'tools:trim-video',
+    async (_event, input: { path: string; startTime: number; endTime: number }): Promise<ConvertResult> => {
+      const { path: videoPath, startTime, endTime } = input
+      const duration = endTime - startTime
+      if (duration <= 0) return { file: videoPath, ok: false, error: 'End time must be after start time' }
+
+      broadcast('tools:trim-progress', { percent: 0 })
+
+      try {
+        const isMp4 = extname(videoPath).toLowerCase() === '.mp4'
+        const finalPath = isMp4 ? videoPath : videoPath.replace(/\.[^.]+$/, '.mp4')
+        if (!isMp4 && await stat(finalPath).then(() => true, () => false)) {
+          return { file: videoPath, ok: false, error: 'Target .mp4 already exists' }
+        }
+
+        const tempPath = join(dirname(videoPath), `.mixer-trim-${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`)
+
+        try {
+          const args = [
+            '-y',
+            '-ss', String(startTime),
+            '-i', videoPath,
+            '-t', String(duration),
+            '-c:v', 'libx264',
+            '-preset', 'medium',
+            '-crf', '18',
+            '-vf', `scale=${DEFAULT_PRESET.width}:${DEFAULT_PRESET.height}:force_original_aspect_ratio=decrease,pad=${DEFAULT_PRESET.width}:${DEFAULT_PRESET.height}:-1:-1:color=black,setsar=1`,
+            '-r', String(DEFAULT_PRESET.fps),
+            '-pix_fmt', DEFAULT_PRESET.pixFmt,
+            '-movflags', '+faststart',
+            '-c:a', 'copy',
+            tempPath,
+          ]
+          await runFfmpeg(args, duration, (percent) => {
+            broadcast('tools:trim-progress', { percent })
+          })
+          await rename(tempPath, finalPath)
+        } catch (err) {
+          await unlink(tempPath).catch(() => {})
+          throw err
+        }
+        if (!isMp4) await unlink(videoPath).catch(() => {})
+        return { file: videoPath, ok: true }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        return { file: videoPath, ok: false, error: message }
+      }
+    },
+  )
 }
