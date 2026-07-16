@@ -471,9 +471,10 @@ async function startMix(): Promise<void> {
           <option value="shake">Shake</option>
           <option value="shake_hard">Shake (Hard)</option>
           <option value="shake_blur">Shake + Blur</option>
+          <option value="shake_wide">Shake (Wide)</option>
+          <option value="shake_quick">Shake (Quick)</option>
           <option value="zoompulse">Zoom Pulse</option>
           <option value="kenburns">Ken Burns</option>
-          <option value="drift">Drift</option>
           <option value="vignette_pulse">Vignette Pulse</option>
           <option value="hueshift">Hue Shift</option>
           <option value="flashpulse">Flash Pulse</option>

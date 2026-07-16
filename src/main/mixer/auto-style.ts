@@ -28,7 +28,7 @@ interface StyleTier {
 
 const STYLE_TIERS: StyleTier[] = [
   { maxScore: 0.14, mixStyle: 'chill', transitionEffect: 'fadewhite', transitionDensity: 15, clipEffect: 'kenburns', effectChance: 30 },
-  { maxScore: 0.28, mixStyle: 'relaxed', transitionEffect: 'fadewhite', transitionDensity: 20, clipEffect: 'drift', effectChance: 25 },
+  { maxScore: 0.28, mixStyle: 'relaxed', transitionEffect: 'fadewhite', transitionDensity: 20, clipEffect: 'vignette_pulse', effectChance: 25 },
   { maxScore: 0.42, mixStyle: 'balanced', transitionEffect: 'circleopen', transitionDensity: 30, clipEffect: 'none', effectChance: 0 },
   { maxScore: 0.57, mixStyle: 'energetic', transitionEffect: 'horzopen', transitionDensity: 40, clipEffect: 'zoompulse', effectChance: 35 },
   { maxScore: 0.71, mixStyle: 'hyperkinetic', transitionEffect: 'acid', transitionDensity: 50, clipEffect: 'shake', effectChance: 45 },

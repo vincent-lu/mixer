@@ -25,7 +25,7 @@ const BASE_DURATIONS: Record<Exclude<TransitionEffect, 'cut'>, number> = {
   doublevision: 1.2,
   solarize: 1.0,
   strobe: 0.8,
-  strobe_white: 0.8,
+  strobe_white: 1.0,
 }
 
 export const CUSTOM_TRANSITION_EXPRS: Partial<Record<TransitionEffect, string>> = {

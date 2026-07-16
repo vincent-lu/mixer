@@ -12,7 +12,7 @@ export type MixStyle = 'chill' | 'relaxed' | 'balanced' | 'energetic' | 'hyperki
 
 export type TransitionEffect = 'cut' | 'circleopen' | 'fadewhite' | 'horzopen' | 'vertopen' | 'acid' | 'doublevision' | 'solarize' | 'strobe' | 'strobe_white'
 
-export type ClipEffect = 'none' | 'shake' | 'shake_hard' | 'shake_blur' | 'zoompulse' | 'kenburns' | 'drift' | 'vignette_pulse' | 'hueshift' | 'flashpulse' | 'negflash' | 'chromatic'
+export type ClipEffect = 'none' | 'shake' | 'shake_hard' | 'shake_blur' | 'shake_wide' | 'shake_quick' | 'zoompulse' | 'kenburns' | 'vignette_pulse' | 'hueshift' | 'flashpulse' | 'negflash' | 'chromatic'
 
 export interface BeatInfo {
   time: number

@@ -50,8 +50,8 @@ describe('getEffectChain', () => {
 
   it('returns a chain for every non-none effect', () => {
     const effects = [
-      'shake', 'shake_hard', 'shake_blur', 'zoompulse', 'kenburns',
-      'drift', 'vignette_pulse', 'hueshift', 'flashpulse', 'negflash', 'chromatic',
+      'shake', 'shake_hard', 'shake_blur', 'shake_wide', 'shake_quick', 'zoompulse',
+      'kenburns', 'vignette_pulse', 'hueshift', 'flashpulse', 'negflash', 'chromatic',
     ] as const
     for (const effect of effects) {
       const chain = getEffectChain(effect, 0)
@@ -92,7 +92,7 @@ describe('assignEffects', () => {
   })
 
   it('segment indices are valid', () => {
-    const assignments = assignEffects(10, 'drift', 100)
+    const assignments = assignEffects(10, 'shake_wide', 100)
     for (const a of assignments) {
       expect(a.segmentIndex).toBeGreaterThanOrEqual(0)
       expect(a.segmentIndex).toBeLessThan(10)
