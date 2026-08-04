@@ -33,6 +33,7 @@ const clipEffect = ref<NonNullable<MixJobConfig['clipEffect']>>('none')
 const effectChance = ref(0)
 const lookahead = ref(DEFAULT_STYLE_LOOKAHEAD.balanced)
 const outputFilename = ref('')
+const outputFilenameManual = ref(false)
 const maxConcurrency = ref(1)
 
 const mode = ref<ConfigMode>('single')
@@ -78,6 +79,7 @@ watch(mode, (newMode, oldMode) => {
     bgmPath.value = ''
     sourceVideoPaths.value = []
     outputFilename.value = ''
+    outputFilenameManual.value = false
   }
   if (oldMode === 'batch') {
     bgmFolderPaths.value = []
@@ -108,7 +110,7 @@ async function pickBgm(): Promise<void> {
   const path = await platform.selectAudioFile()
   if (path) {
     bgmPath.value = path
-    if (!outputFilename.value) {
+    if (!outputFilenameManual.value) {
       outputFilename.value = baseNameWithoutExt(path)
     }
   }
@@ -147,9 +149,10 @@ async function scanBgmFolders(): Promise<void> {
 }
 
 async function pickBgmFolder(): Promise<void> {
-  const dir = await platform.selectDirectory()
-  if (dir && !bgmFolderPaths.value.includes(dir)) {
-    bgmFolderPaths.value = [...bgmFolderPaths.value, dir]
+  const dirs = await platform.selectDirectories()
+  const fresh = dirs.filter((d) => !bgmFolderPaths.value.includes(d))
+  if (fresh.length > 0) {
+    bgmFolderPaths.value = [...bgmFolderPaths.value, ...fresh]
     await scanBgmFolders()
   }
 }
@@ -168,9 +171,10 @@ async function scanVideoFolders(): Promise<void> {
 }
 
 async function pickVideoFolder(): Promise<void> {
-  const dir = await platform.selectDirectory()
-  if (dir && !videoFolderPaths.value.includes(dir)) {
-    videoFolderPaths.value = [...videoFolderPaths.value, dir]
+  const dirs = await platform.selectDirectories()
+  const fresh = dirs.filter((d) => !videoFolderPaths.value.includes(d))
+  if (fresh.length > 0) {
+    videoFolderPaths.value = [...videoFolderPaths.value, ...fresh]
     await scanVideoFolders()
   }
 }
@@ -372,6 +376,7 @@ async function startMix(): Promise<void> {
           type="text"
           class="input filename-input"
           placeholder="Auto-generated from BGM"
+          @input="outputFilenameManual = ($event.target as HTMLInputElement).value.length > 0"
         />
       </FormRow>
 

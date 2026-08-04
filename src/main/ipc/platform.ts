@@ -20,6 +20,15 @@ export function registerPlatformHandlers(): void {
     return result.filePaths[0] ?? null
   })
 
+  ipcMain.handle('platform:selectDirectories', async (): Promise<string[]> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Select directories',
+      properties: ['openDirectory', 'multiSelections'],
+    })
+    if (result.canceled) return []
+    return result.filePaths
+  })
+
   ipcMain.handle('platform:selectVideoFiles', async (): Promise<string[]> => {
     const result = await dialog.showOpenDialog({
       title: 'Select video files',

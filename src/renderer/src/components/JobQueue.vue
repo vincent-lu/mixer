@@ -7,6 +7,7 @@ import type { MixJob, MixJobStatus } from '@renderer/platform'
 
 const store = useJobsStore()
 const { jobs, loading, queuePaused, completedJobs } = storeToRefs(store)
+const showClearAllConfirm = ref(false)
 
 const now = ref(Date.now())
 let tickTimer: ReturnType<typeof setInterval> | null = null
@@ -97,6 +98,11 @@ function isDeletable(status: MixJobStatus): boolean {
 function showOutput(path: string): void {
   void platform.showItemInFolder(path)
 }
+
+async function confirmClearAll(): Promise<void> {
+  showClearAllConfirm.value = false
+  await store.clearAll()
+}
 </script>
 
 <template>
@@ -111,6 +117,14 @@ function showOutput(path: string): void {
         >
           <FaIcon :icon="['fasr', 'trash']" />
           <span>Clear</span>
+        </button>
+        <button
+          v-if="jobs.length > 0"
+          class="pause-btn danger-btn"
+          @click="showClearAllConfirm = true"
+        >
+          <FaIcon :icon="['fasr', 'trash']" />
+          <span>Clear All</span>
         </button>
         <button class="pause-btn" :class="{ paused: queuePaused }" @click="store.togglePaused()">
           <FaIcon :icon="['fasr', queuePaused ? 'play' : 'pause']" />
@@ -182,6 +196,18 @@ function showOutput(path: string): void {
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="showClearAllConfirm" class="modal-overlay" @click.self="showClearAllConfirm = false" @keydown.escape="showClearAllConfirm = false">
+        <div class="modal-box">
+          <p class="modal-text">Clear all jobs? This will cancel any running jobs and remove everything from the queue.</p>
+          <div class="modal-actions">
+            <button class="modal-btn cancel" @click="showClearAllConfirm = false">Cancel</button>
+            <button class="modal-btn confirm" @click="confirmClearAll">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -381,5 +407,75 @@ function showOutput(path: string): void {
   to {
     transform: rotate(360deg);
   }
+}
+
+.danger-btn {
+  border-color: #7f1d1d;
+  color: #f87171;
+}
+
+.danger-btn:hover {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  padding: 20px 24px;
+  max-width: 360px;
+  width: 100%;
+}
+
+.modal-text {
+  color: #d1d5db;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.modal-btn.cancel {
+  background: #374151;
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.modal-btn.cancel:hover {
+  background: #4b5563;
+  color: #d1d5db;
+}
+
+.modal-btn.confirm {
+  background: #dc2626;
+  color: #fff;
+}
+
+.modal-btn.confirm:hover {
+  background: #ef4444;
 }
 </style>

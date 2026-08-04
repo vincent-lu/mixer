@@ -3,6 +3,7 @@ import type { Platform } from './types'
 export const electronPlatform: Platform = {
   ping: () => window.api.ping(),
   selectDirectory: () => window.api.selectDirectory(),
+  selectDirectories: () => window.api.selectDirectories(),
   selectVideoFiles: () => window.api.selectVideoFiles(),
   selectAudioFile: () => window.api.selectAudioFile(),
   listMediaFiles: (input) => window.api.listMediaFiles(input),

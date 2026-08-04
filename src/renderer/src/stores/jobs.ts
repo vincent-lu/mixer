@@ -107,6 +107,21 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   }
 
+  async function clearAll(): Promise<void> {
+    const ids = jobs.value.map((j) => j.id)
+    const activeIds = jobs.value
+      .filter((j) => j.status === 'analyzing' || j.status === 'mixing' || j.status === 'pending')
+      .map((j) => j.id)
+    try {
+      await Promise.all(activeIds.map((id) => platform.cancelJob(id)))
+      await Promise.all(ids.map((id) => platform.deleteJob(id)))
+      jobs.value = []
+    } catch (e) {
+      console.error('[jobs] clearAll failed:', e)
+      await load()
+    }
+  }
+
   async function remove(id: number): Promise<void> {
     try {
       await platform.deleteJob(id)
@@ -154,6 +169,7 @@ export const useJobsStore = defineStore('jobs', () => {
     retry,
     remove,
     clearCompleted,
+    clearAll,
     togglePaused,
     subscribe,
     unsubscribe,

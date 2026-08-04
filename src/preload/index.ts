@@ -18,6 +18,7 @@ const api = {
   // Platform
   ping: (): Promise<string> => ipcRenderer.invoke('platform:ping'),
   selectDirectory: (): Promise<string | null> => ipcRenderer.invoke('platform:selectDirectory'),
+  selectDirectories: (): Promise<string[]> => ipcRenderer.invoke('platform:selectDirectories'),
   selectVideoFiles: (): Promise<string[]> => ipcRenderer.invoke('platform:selectVideoFiles'),
   selectAudioFile: (): Promise<string | null> => ipcRenderer.invoke('platform:selectAudioFile'),
   listMediaFiles: (input: { dir: string; type: 'video' | 'audio' | 'audio-only' }): Promise<string[]> =>

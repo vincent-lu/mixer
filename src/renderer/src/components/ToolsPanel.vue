@@ -706,6 +706,15 @@ function formatSize(bytes: number): string {
   background: #374151;
 }
 
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
 .checkbox {
   accent-color: #2563eb;
   cursor: pointer;

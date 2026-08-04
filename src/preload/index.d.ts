@@ -20,6 +20,7 @@ declare global {
       // Platform
       ping(): Promise<string>
       selectDirectory(): Promise<string | null>
+      selectDirectories(): Promise<string[]>
       selectVideoFiles(): Promise<string[]>
       selectAudioFile(): Promise<string | null>
       listMediaFiles(input: { dir: string; type: 'video' | 'audio' | 'audio-only' }): Promise<string[]>

@@ -15,10 +15,10 @@ function simpleAppend(filters: string): EffectFilterFn {
 // Multi-part chains (`;`-separated): the last part must NOT carry an output label —
 // filter.ts appends `[v${i}]` to it during assembly.
 const EFFECT_FILTERS: Record<Exclude<ClipEffect, 'none'>, EffectFilterFn> = {
-  shake: simpleAppend('scale=2304:1296,rotate=0.048*sin(t*8):c=black,crop=1920:1080'),
+  shake: simpleAppend('scale=2688:1512,rotate=0.048*sin(t*8):c=black,crop=1920:1080:(384+200*sin(t*6)):216'),
   shake_hard: simpleAppend('scale=2496:1404,rotate=0.096*sin(t*12):c=black,crop=1920:1080'),
   shake_blur: simpleAppend("scale=2304:1296,rotate=0.048*sin(t*8):c=black,crop=1920:1080,boxblur=lr=2:cr=2:enable='gt(abs(cos(t*8)),0.5)'"),
-  shake_wide: simpleAppend('scale=2688:1512,rotate=0.048*sin(t*8):c=black,crop=1920:1080:(384+200*sin(t*6)):216'),
+  shake_wide: simpleAppend('scale=3456:1944,rotate=0.096*sin(t*8):c=black,crop=1920:1080:(768+400*sin(t*6)):432'),
   shake_quick: simpleAppend('scale=2592:1458,rotate=0.072*sin(t*18):c=black,crop=1920:1080'),
   zoompulse: simpleAppend('scale=w=iw*(1.08+0.08*sin(t*6*2*PI)):h=ih*(1.08+0.08*sin(t*6*2*PI)):eval=frame,crop=1920:1080'),
   kenburns: simpleAppend("scale=w='iw*(1+0.08*min(t,5))':h='ih*(1+0.08*min(t,5))':eval=frame,crop=1920:1080"),
