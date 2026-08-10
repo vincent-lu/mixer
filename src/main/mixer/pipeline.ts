@@ -83,8 +83,14 @@ export async function runMixPipeline(options: PipelineOptions): Promise<Pipeline
       ? transitions
       : Array.from({ length: plan.segments.length - 1 }, () => ({ type: 'cut' as const, duration: 0 }))
     const { inputArgs, filterScript, outputArgs } = buildFilterComplexArgs(plan, paddedTransitions, bgmPath, outputPath, effects)
-    const args = [...inputArgs, '-filter_complex', filterScript, ...outputArgs]
-    await runFfmpeg(args, analysis.bgmDuration, onProgress && ((pct) => onProgress('mixing', pct)), signal)
+    const filterPath = join(tmpdir(), `mixer-filter-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`)
+    try {
+      await writeFile(filterPath, filterScript, 'utf-8')
+      const args = [...inputArgs, '-/filter_complex', filterPath, ...outputArgs]
+      await runFfmpeg(args, analysis.bgmDuration, onProgress && ((pct) => onProgress('mixing', pct)), signal)
+    } finally {
+      await unlink(filterPath).catch(() => {})
+    }
   } else {
     const concatPath = join(tmpdir(), `mixer-concat-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`)
     try {
