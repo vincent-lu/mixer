@@ -10,6 +10,7 @@ Video mixer — beat-synced scene switching. Takes source videos + BGM, analyzes
 ## Rules
 
 1. **No commits without explicit user approval.**
+1. **Never amend or rebase commits that have been pushed.** Create a new fix commit on top instead.
 2. **Docs update in the same turn as decisions.** New decision → edit `design.md` AND append a dated `decision-log.md` entry.
 3. **Preload must be `.mjs`.** electron-vite outputs `out/preload/index.mjs`; main references `'../preload/index.mjs'`.
 4. **CSP directives in `src/renderer/index.html` are load-bearing.** `'wasm-unsafe-eval'` and `'unsafe-eval'` for essentia.js WASM, `worker-src 'self' blob:` for web workers.
